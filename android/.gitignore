@@ -1,37 +1,77 @@
-# -----------------------
-# BACKEND - FastAPI
-# -----------------------
-ai_roleplay_backend/.env
+# ========================
+# FLUTTER / DART
+# ========================
+.dart_tool/
+.packages
+.pub-cache/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.melody/
+.metadata
+.idea/
+android/local.properties
+
+# Flutter generated files
+*.lock
+*.iml
+
+# Android
+android/gradle-wrapper.jar
+android/gradlew
+android/gradlew.bat
+android/.gradle/
+android/app/build/
+android/app/src/main/java/
+
+# iOS
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Generated.xcconfig
+ios/Flutter/ephemeral/
+ios/Runner.xcodeproj/project.xcworkspace/
+ios/Runner.xcworkspace/
+ios/Pods/
+
+# macOS
+macos/Flutter/ephemeral/
+macos/Runner.xcworkspace/
+
+# Linux
+linux/flutter/ephemeral/
+
+# Web
+web/.dart_tool/
+
+# Windows
+windows/flutter/ephemeral/
+
+# VS Code
+.vscode/
+
+# ========================
+# PYTHON / FASTAPI BACKEND
+# ========================
 ai_roleplay_backend/__pycache__/
-ai_roleplay_backend/*.pyc
-*.py[cod]
+ai_roleplay_backend/.env
+*.pyc
 *.pyo
 *.pyd
 .Python
-env/
+.env
+.venv/
 venv/
 ENV/
-ENV.bak/
-*.sqlite3
-
-# -----------------------
-# FLUTTER
-# -----------------------
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-.pub-cache/
-.dart_tool/
+env/
+dist/
 build/
-.idea/
-*.iml
-*.lock
-pubspec.lock
+*.egg-info/
+pip-log.txt
+pip-delete-this-directory.txt
 
-# -----------------------
-# OTHER
-# -----------------------
-*.log
-*.swp
+# ========================
+# SYSTEM / MISC
+# ========================
 .DS_Store
 Thumbs.db
+*.log
