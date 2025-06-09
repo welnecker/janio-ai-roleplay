@@ -1,14 +1,37 @@
-gradle-wrapper.jar
-/.gradle
-/captures/
-/gradlew
-/gradlew.bat
-/local.properties
-GeneratedPluginRegistrant.java
-.cxx/
+# -----------------------
+# BACKEND - FastAPI
+# -----------------------
+ai_roleplay_backend/.env
+ai_roleplay_backend/__pycache__/
+ai_roleplay_backend/*.pyc
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+ENV.bak/
+*.sqlite3
 
-# Remember to never publicly share your keystore.
-# See https://flutter.dev/to/reference-keystore
-key.properties
-**/*.keystore
-**/*.jks
+# -----------------------
+# FLUTTER
+# -----------------------
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.dart_tool/
+build/
+.idea/
+*.iml
+*.lock
+pubspec.lock
+
+# -----------------------
+# OTHER
+# -----------------------
+*.log
+*.swp
+.DS_Store
+Thumbs.db
