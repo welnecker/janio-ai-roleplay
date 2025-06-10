@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/character_selection.dart';
+import 'screens/home_screen.dart';
 
 void main() {
   runApp(const RoleplayApp());
@@ -11,9 +11,10 @@ class RoleplayApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Janio AI Roleplay',
-      theme: ThemeData.dark(),
-      home: const CharacterSelectionScreen(),
+      title: 'IA Roleplay',
+      theme: ThemeData(primarySwatch: Colors.purple),
+      home: const HomeScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
