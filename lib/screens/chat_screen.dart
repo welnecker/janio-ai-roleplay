@@ -15,6 +15,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final ApiService apiService = ApiService();
   int score = 0;
   String emotionalState = "Distante";
+  bool isLoading = false;
 
   void sendMessage() async {
     String text = _controller.text.trim();
@@ -22,6 +23,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     setState(() {
       messages.add("Você: $text");
+      isLoading = true;
     });
 
     try {
@@ -33,7 +35,11 @@ class _ChatScreenState extends State<ChatScreen> {
       });
     } catch (e) {
       setState(() {
-        messages.add("${widget.character['name']}: [Erro na IA: ${e.toString()}]");
+        messages.add("${widget.character['name']}: [Erro: ${e.toString()}]");
+      });
+    } finally {
+      setState(() {
+        isLoading = false;
       });
     }
 
@@ -41,12 +47,15 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget buildQuickAction(String label) {
-    return ElevatedButton(
-      onPressed: () {
-        _controller.text = label;
-        sendMessage();
-      },
-      child: Text(label),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+      child: ElevatedButton(
+        onPressed: () {
+          _controller.text = label;
+          sendMessage();
+        },
+        child: Text(label),
+      ),
     );
   }
 
@@ -60,11 +69,22 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Expanded(
             child: ListView(
-              children: messages.map((msg) => ListTile(title: Text(msg))).toList(),
+              padding: const EdgeInsets.all(8.0),
+              children: messages
+                  .map((msg) => ListTile(
+                        title: Text(msg),
+                      ))
+                  .toList(),
             ),
           ),
+          if (isLoading)
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Text("⏳ ${"Pensando..."}"),
+            ),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: Row(
               children: [
                 buildQuickAction("Elogiar"),
@@ -80,13 +100,14 @@ class _ChatScreenState extends State<ChatScreen> {
                 Expanded(
                   child: TextField(
                     controller: _controller,
-                    decoration: const InputDecoration(hintText: "Digite sua mensagem..."),
+                    decoration:
+                        const InputDecoration(hintText: "Digite sua mensagem..."),
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.send),
                   onPressed: sendMessage,
-                )
+                ),
               ],
             ),
           ),

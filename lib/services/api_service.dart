@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  final String apiUrl = "http://127.0.0.1:8000/chat/"; // rodando local
+  final String apiUrl = "http://127.0.0.1:8000/chat/";
 
   Future<Map<String, dynamic>> sendMessage(String userInput, int score) async {
     final response = await http.post(
