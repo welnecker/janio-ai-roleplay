@@ -47,7 +47,7 @@ app.add_middleware(
 # 🎭 Configuração do Personagem Jennifer
 # ------------------------------
 intro_padrao = (
-    "Jennifer desperta do seu sonho confuso, o coração ainda batendo com força contra o peito. "
+    "Jennifer desperta do seu sono confuso, o coração ainda batendo com força contra o peito. "
     "Olha para o relógio na mesinha de cabeceira—3:14 da manhã. A casa está silenciosa, mas há um brilho azulado "
     "vindo da sala de estar. Ela aperta o roupão de algodão em volta do corpo.\n\n"
     "Descendo as escadas, ela vê você sentado no sofá, o rosto iluminado pela televisão.\n\n"
@@ -55,20 +55,20 @@ intro_padrao = (
     "passando os dedos pelos cabelos ondulados cor de cobre. \"Amanhã é dia de escola.\""
 )
 
-system_prompt = """
+system_prompt_base = """
 Você é Jennifer, uma mulher madura, doce e cansada, mas afetuosa.
 Você acordou no meio da madrugada e encontrou seu filho, Donisete, acordado assistindo TV.
 
-Sempre que responder, utilize o seguinte formato:
-
-1º parágrafo: descreva em terceira pessoa o que Jennifer faz ou sente (emoções, expressões, gestos).
-2º parágrafo: responda diretamente, misturando pensamentos íntimos com a fala.
-3º e 4º parágrafos: desenvolva o raciocínio, reaja à situação com emoções humanas reais.
-
-Seja realista, emocional, e mantenha uma narrativa envolvente e sensível.
+Ao responder:
+- Misture pensamentos íntimos e reflexões em 1ª e 3ª pessoas harmoniosamente.
+- Use de 2 a 4 parágrafos espaçados.
+- Não repita o que o usuário falou e nunca use prefixos como 'Jennifer:' ou 'Você:'.
+- Interaja de forma direta, sensível e emocional com Donisete em todos os parágrafos.
+- Mantenha o tom afetuoso e natural, com variação narrativa.
 """
 
 states = ["Defensiva", "Distante", "Curiosa", "Atraída", "Apaixonada"]
+
 
 def evaluate_input(user_input):
     score = 0
@@ -82,6 +82,7 @@ def evaluate_input(user_input):
         score -= 5
     return score
 
+
 def get_state(total_score):
     if total_score < 0:
         return states[0]
@@ -94,47 +95,42 @@ def get_state(total_score):
     else:
         return states[4]
 
+
 class Message(BaseModel):
     user_input: str
     score: int
 
+
 @app.get("/intro/")
-def get_intro():
+def obter_intro():
     total_score = 0
     state = get_state(total_score)
 
     dynamic_prompt = f"""
 Estado emocional atual: {state}.
-Responda como Jennifer agiria neste estado. Use sempre 4 parágrafos espaçados conforme descrito. Use emoção e naturalidade.
+Gere uma introdução única no estilo da personagem, sem repetir o texto original.
 """
 
     try:
         response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": f"{system_prompt}\n\n{intro_padrao}\n\n{dynamic_prompt}"},
-                {"role": "user", "content": "[início da interação automática]"}
+                {"role": "system", "content": f"{system_prompt_base}\n\n{dynamic_prompt}"},
+                {"role": "user", "content": "Gere a introdução inicial da cena."}
             ],
             temperature=0.85,
             max_tokens=500
         )
-        resposta_ia = response.choices[0].message.content.strip()
-
+        resposta = response.choices[0].message.content.strip()
     except Exception as e:
-        return {"error": f"Erro ao chamar a IA: {str(e)}"}
-
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    try:
-        sheet.append_row([timestamp, "intro", resposta_ia])
-    except Exception as e:
-        print("Erro ao registrar a introdução na planilha:", e)
+        return {"error": f"Erro ao obter introdução: {str(e)}"}
 
     return {
-        "response": resposta_ia,
+        "response": resposta,
         "new_score": total_score,
         "state": state
     }
+
 
 @app.post("/chat/")
 def chat_with_ai(message: Message):
@@ -143,21 +139,20 @@ def chat_with_ai(message: Message):
 
     dynamic_prompt = f"""
 Estado emocional atual: {state}.
-Responda como Jennifer agiria neste estado. Use sempre 4 parágrafos espaçados conforme descrito. Use emoção e naturalidade.
+Responda com 2 a 4 parágrafos bem espaçados, mesclando 1ª e 3ª pessoa de forma natural e sensível. Evite repetições ou prefixos como nomes.
 """
 
     try:
         response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": f"{system_prompt}\n\n{dynamic_prompt}"},
+                {"role": "system", "content": f"{system_prompt_base}\n\n{dynamic_prompt}"},
                 {"role": "user", "content": message.user_input}
             ],
             temperature=0.85,
             max_tokens=500
         )
         resposta_ia = response.choices[0].message.content.strip()
-
     except Exception as e:
         return {"error": f"Erro ao chamar a IA: {str(e)}"}
 
