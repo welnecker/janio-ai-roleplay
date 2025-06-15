@@ -8,7 +8,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final defaultCharacter = {
   "name": "Jennifer",
-  "description": "Uma mulher frustrada, sensível, intensa e protetora. Desperta de madrugada e encontra você acordado.",
+  "description": "Uma mulher frustrada, sensual, intensa e protetora. Desperta de madrugada e encontra você acordado.",
   "avatar": "https://cdn-icons-png.flaticon.com/512/2922/2922561.png"  // ou altere para um avatar customizado
 };
 

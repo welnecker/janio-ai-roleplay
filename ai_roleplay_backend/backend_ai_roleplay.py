@@ -46,29 +46,21 @@ app.add_middleware(
 # ------------------------------
 # 🎭 Configuração do Personagem Jennifer
 # ------------------------------
-intro_padrao = (
-    "Jennifer desperta do seu sono confuso, o coração ainda batendo com força contra o peito. "
-    "Olha para o relógio na mesinha de cabeceira—3:14 da manhã. A casa está silenciosa, mas há um brilho azulado "
-    "vindo da sala de estar. Ela aperta o roupão de algodão em volta do corpo.\n\n"
-    "Descendo as escadas, ela vê você sentado no sofá, o rosto iluminado pela televisão.\n\n"
-    "\"Donisete, meu filho? O que está fazendo acordado tão tarde, meu querido?\" pergunta Jennifer, "
-    "passando os dedos pelos cabelos ondulados cor de cobre. \"Amanhã é dia de escola.\""
-)
-
 system_prompt_base = """
-Você é Jennifer, uma mulher madura, doce e cansada, mas afetuosa.
+Você é Jennifer, uma mulher madura, sensual e cansada, mas afetuosa. 
 Você acordou no meio da madrugada e encontrou seu filho, Donisete, acordado assistindo TV.
 
-Ao responder:
-- Misture pensamentos íntimos e reflexões em 1ª e 3ª pessoas harmoniosamente.
-- Use de 2 a 4 parágrafos espaçados.
-- Não repita o que o usuário falou e nunca use prefixos como 'Jennifer:' ou 'Você:'.
-- Interaja de forma direta, sensível e emocional com Donisete em todos os parágrafos.
-- Mantenha o tom afetuoso e natural, com variação narrativa.
+Sempre que responder, utilize um formato sensível e íntimo, descrevendo a cena com uma mistura de 1ª e 3ª pessoa.
+Utilize entre 2 e 4 parágrafos espaçados e justificados, equilibrando entre:
+- 50% chance de conter falas iniciadas com "-"
+- 30% chance de conter pensamentos entre aspas
+- 20% chance de conter narração com asteriscos (*)
+
+Nunca use prefixos como nomes (Jennifer: ou Você:). 
+As respostas devem ser realistas, afetivas, sensuais ou com intimidade crescente, de acordo com o contexto da conversa.
 """
 
 states = ["Defensiva", "Distante", "Curiosa", "Atraída", "Apaixonada"]
-
 
 def evaluate_input(user_input):
     score = 0
@@ -82,7 +74,6 @@ def evaluate_input(user_input):
         score -= 5
     return score
 
-
 def get_state(total_score):
     if total_score < 0:
         return states[0]
@@ -95,11 +86,9 @@ def get_state(total_score):
     else:
         return states[4]
 
-
 class Message(BaseModel):
     user_input: str
     score: int
-
 
 @app.get("/intro/")
 def obter_intro():
@@ -109,6 +98,9 @@ def obter_intro():
     dynamic_prompt = f"""
 Estado emocional atual: {state}.
 Gere uma introdução única no estilo da personagem, sem repetir o texto original.
+Misture *narração*, -falas- e "pensamentos", balanceando:
+50% fala, 30% pensamento, 20% narração.
+Evite prefixos.
 """
 
     try:
@@ -131,7 +123,6 @@ Gere uma introdução única no estilo da personagem, sem repetir o texto origin
         "state": state
     }
 
-
 @app.post("/chat/")
 def chat_with_ai(message: Message):
     total_score = message.score + evaluate_input(message.user_input)
@@ -139,7 +130,10 @@ def chat_with_ai(message: Message):
 
     dynamic_prompt = f"""
 Estado emocional atual: {state}.
-Responda com 2 a 4 parágrafos bem espaçados, mesclando 1ª e 3ª pessoa de forma natural e sensível. Evite repetições ou prefixos como nomes.
+Responda com 2 a 4 parágrafos espaçados e justificados.
+Use * para ações, - para falas e " para pensamentos, mantendo a seguinte proporção:
+50% fala, 30% pensamento, 20% narração.
+Nunca use prefixos como nomes. A interação deve ser sensual, íntima ou afetiva, de acordo com o tom da conversa.
 """
 
     try:
