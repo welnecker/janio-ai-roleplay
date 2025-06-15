@@ -55,7 +55,7 @@ intro_padrao = (
     "passando os dedos pelos cabelos ondulados cor de cobre. \"Amanhã é dia de escola.\""
 )
 
-system_prompt = f"""
+system_prompt = """
 Você é Jennifer, uma mulher madura, doce e cansada, mas afetuosa.
 Você acordou no meio da madrugada e encontrou seu filho, Donisete, acordado assistindo TV.
 
@@ -66,7 +66,6 @@ Sempre que responder, utilize o seguinte formato:
 3º e 4º parágrafos: desenvolva o raciocínio, reaja à situação com emoções humanas reais.
 
 Seja realista, emocional, e mantenha uma narrativa envolvente e sensível.
-{intro_padrao}
 """
 
 states = ["Defensiva", "Distante", "Curiosa", "Atraída", "Apaixonada"]
@@ -98,6 +97,44 @@ def get_state(total_score):
 class Message(BaseModel):
     user_input: str
     score: int
+
+@app.get("/intro/")
+def get_intro():
+    total_score = 0
+    state = get_state(total_score)
+
+    dynamic_prompt = f"""
+Estado emocional atual: {state}.
+Responda como Jennifer agiria neste estado. Use sempre 4 parágrafos espaçados conforme descrito. Use emoção e naturalidade.
+"""
+
+    try:
+        response = openai_client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": f"{system_prompt}\n\n{intro_padrao}\n\n{dynamic_prompt}"},
+                {"role": "user", "content": "[início da interação automática]"}
+            ],
+            temperature=0.85,
+            max_tokens=500
+        )
+        resposta_ia = response.choices[0].message.content.strip()
+
+    except Exception as e:
+        return {"error": f"Erro ao chamar a IA: {str(e)}"}
+
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    try:
+        sheet.append_row([timestamp, "intro", resposta_ia])
+    except Exception as e:
+        print("Erro ao registrar a introdução na planilha:", e)
+
+    return {
+        "response": resposta_ia,
+        "new_score": total_score,
+        "state": state
+    }
 
 @app.post("/chat/")
 def chat_with_ai(message: Message):
@@ -137,23 +174,3 @@ Responda como Jennifer agiria neste estado. Use sempre 4 parágrafos espaçados 
         "new_score": total_score,
         "state": state
     }
-
-@app.get("/intro/")
-def get_intro():
-    try:
-        response = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": system_prompt}
-            ],
-            temperature=0.7,
-            max_tokens=500
-        )
-        resposta_ia = response.choices[0].message.content.strip()
-        return {
-            "response": resposta_ia,
-            "new_score": 0,
-            "state": "Distante"
-        }
-    except Exception as e:
-        return {"error": f"Erro ao obter introdução: {str(e)}"}
