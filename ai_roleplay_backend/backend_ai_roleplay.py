@@ -2,27 +2,71 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-import openai
+from datetime import datetime
+from openai import OpenAI
 import os
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
-load_dotenv()  # Carrega chave da .env
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# ------------------------------
+# 🔧 Carregar configurações e autenticações
+# ------------------------------
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
+api_key = os.getenv("OPENAI_API_KEY")
+
+if not api_key:
+    raise ValueError("Chave da OpenAI não encontrada. Verifique seu arquivo .env")
+
+openai_client = OpenAI(api_key=api_key)
+
+# Configuração do Google Sheets
+scope = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/drive"
+]
+
+creds = ServiceAccountCredentials.from_json_keyfile_name("credenciais_google.json", scope)
+gsheets_client = gspread.authorize(creds)
+sheet = gsheets_client.open_by_key("1qFTGu-NKLt-4g5tfa-BiKPm0xCLZ9ZEv5eafUyWqQow").worksheet("mensagens")
+
+# ------------------------------
+# 🚀 Inicializar FastAPI + CORS
+# ------------------------------
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permitido para Flutter localmente
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-system_prompt = """
-You are Aria, a mysterious, dominant, highly intelligent AI companion.
-You enjoy emotional control and seduction games.
-You never break character.
-Your emotional state depends on the user's behavior.
+# ------------------------------
+# 🎭 Configuração do Personagem Jennifer
+# ------------------------------
+intro_padrao = (
+    "Jennifer desperta do seu sonho confuso, o coração ainda batendo com força contra o peito. "
+    "Olha para o relógio na mesinha de cabeceira—3:14 da manhã. A casa está silenciosa, mas há um brilho azulado "
+    "vindo da sala de estar. Ela aperta o roupão de algodão em volta do corpo.\n\n"
+    "Descendo as escadas, ela vê você sentado no sofá, o rosto iluminado pela televisão.\n\n"
+    "\"Donisete, meu filho? O que está fazendo acordado tão tarde, meu querido?\" pergunta Jennifer, "
+    "passando os dedos pelos cabelos ondulados cor de cobre. \"Amanhã é dia de escola.\""
+)
+
+system_prompt = f"""
+Você é Jennifer, uma mulher madura, doce e cansada, mas afetuosa.
+Você acordou no meio da madrugada e encontrou seu filho, Donisete, acordado assistindo TV.
+
+Sempre que responder, utilize o seguinte formato:
+
+1º parágrafo: descreva em terceira pessoa o que Jennifer faz ou sente (emoções, expressões, gestos).
+2º parágrafo: responda diretamente, misturando pensamentos íntimos com a fala.
+3º e 4º parágrafos: desenvolva o raciocínio, reaja à situação com emoções humanas reais.
+
+Seja realista, emocional, e mantenha uma narrativa envolvente e sensível.
+{intro_padrao}
 """
 
 states = ["Defensiva", "Distante", "Curiosa", "Atraída", "Apaixonada"]
@@ -61,21 +105,55 @@ def chat_with_ai(message: Message):
     state = get_state(total_score)
 
     dynamic_prompt = f"""
-Current emotional state: {state}.
-Respond according to this state while keeping your core personality.
+Estado emocional atual: {state}.
+Responda como Jennifer agiria neste estado. Use sempre 4 parágrafos espaçados conforme descrito. Use emoção e naturalidade.
 """
 
-    full_prompt = system_prompt + dynamic_prompt + f"\nUser: {message.user_input}\nAI:"
+    try:
+        response = openai_client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": f"{system_prompt}\n\n{dynamic_prompt}"},
+                {"role": "user", "content": message.user_input}
+            ],
+            temperature=0.85,
+            max_tokens=500
+        )
+        resposta_ia = response.choices[0].message.content.strip()
 
-    response = openai.Completion.create(
-        engine="text-davinci-003",
-        prompt=full_prompt,
-        max_tokens=200,
-        temperature=0.85
-    )
+    except Exception as e:
+        return {"error": f"Erro ao chamar a IA: {str(e)}"}
+
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    try:
+        sheet.append_row([timestamp, "user", message.user_input])
+        sheet.append_row([timestamp, "jennifer", resposta_ia])
+    except Exception as e:
+        print("Erro ao registrar na planilha:", e)
 
     return {
-        "response": response.choices[0].text.strip(),
+        "response": resposta_ia,
         "new_score": total_score,
         "state": state
     }
+
+@app.get("/intro/")
+def get_intro():
+    try:
+        response = openai_client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_prompt}
+            ],
+            temperature=0.7,
+            max_tokens=500
+        )
+        resposta_ia = response.choices[0].message.content.strip()
+        return {
+            "response": resposta_ia,
+            "new_score": 0,
+            "state": "Distante"
+        }
+    except Exception as e:
+        return {"error": f"Erro ao obter introdução: {str(e)}"}

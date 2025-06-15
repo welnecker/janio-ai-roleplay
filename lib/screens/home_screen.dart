@@ -7,11 +7,11 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final defaultCharacter = {
-      "name": "Dina",
-      "description": "Uma jovem mulher carismática, misteriosa e sedutora.",
-      "avatar":
-          "https://cdn-icons-png.flaticon.com/512/2922/2922561.png" // opcional
-    };
+  "name": "Jennifer",
+  "description": "Uma mulher frustrada, sensível, intensa e protetora. Desperta de madrugada e encontra você acordado.",
+  "avatar": "https://cdn-icons-png.flaticon.com/512/2922/2922561.png"  // ou altere para um avatar customizado
+};
+
 
     return Scaffold(
       appBar: AppBar(
@@ -27,7 +27,7 @@ class HomeScreen extends StatelessWidget {
               ),
             );
           },
-          child: const Text("Iniciar conversa com Dina"),
+          child: const Text(" Jennifer"),
         ),
       ),
     );

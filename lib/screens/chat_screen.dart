@@ -17,6 +17,27 @@ class _ChatScreenState extends State<ChatScreen> {
   String emotionalState = "Distante";
   bool isLoading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    carregarIntroducao(); // chamada inicial
+  }
+
+  Future<void> carregarIntroducao() async {
+    try {
+      final intro = await apiService.getIntro();
+      setState(() {
+        messages.add("${widget.character['name']}: ${intro['response']}");
+        score = intro['new_score'];
+        emotionalState = intro['state'];
+      });
+    } catch (e) {
+      setState(() {
+        messages.add("${widget.character['name']}: [Erro ao carregar intro: ${e.toString()}]");
+      });
+    }
+  }
+
   void sendMessage() async {
     String text = _controller.text.trim();
     if (text.isEmpty) return;
@@ -68,19 +89,34 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(8.0),
-              children: messages
-                  .map((msg) => ListTile(
-                        title: Text(msg),
-                      ))
-                  .toList(),
-            ),
-          ),
+  child: ListView(
+    padding: const EdgeInsets.all(8.0),
+    children: messages.map((msg) {
+      final partes = msg.split('\n\n'); // separa parágrafos duplos
+
+      return Container(
+        margin: const EdgeInsets.symmetric(vertical: 6.0),
+        padding: const EdgeInsets.all(8.0),
+        decoration: BoxDecoration(
+          color: msg.startsWith("Você:") ? Colors.grey[200] : Colors.purple[50],
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: partes.map((p) => Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Text(p.trim()),
+          )).toList(),
+        ),
+      );
+    }).toList(),
+  ),
+),
+
           if (isLoading)
             const Padding(
               padding: EdgeInsets.all(8.0),
-              child: Text("⏳ ${"Pensando..."}"),
+              child: Text("⏳ Pensando..."),
             ),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -100,8 +136,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 Expanded(
                   child: TextField(
                     controller: _controller,
-                    decoration:
-                        const InputDecoration(hintText: "Digite sua mensagem..."),
+                    decoration: const InputDecoration(
+                      hintText: "Digite sua mensagem...",
+                    ),
                   ),
                 ),
                 IconButton(
