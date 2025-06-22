@@ -37,6 +37,10 @@ def is_blocked_response(resposta_ia: str) -> bool:
     texto = resposta_ia.lower()
     return any(msg in texto for msg in censura)
 
+def gerar_prompt_base(nome_usuario):
+    # Função simples só para não dar erro — personalize como quiser depois!
+    return f"Sinopse gerada para {nome_usuario}."
+
 # --- Função universal: alterna GPT ou LM Studio local ---
 def call_ai(mensagens, modelo="gpt", temperature=0.88, max_tokens=750):
     if modelo == "lmstudio":
