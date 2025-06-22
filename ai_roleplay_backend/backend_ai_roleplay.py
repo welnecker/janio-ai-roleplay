@@ -3,12 +3,14 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from datetime import datetime
+import json
 import os
 import requests
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from fastapi.responses import JSONResponse
 from dateutil import parser as dateparser
+
 
 # OpenAI (só se for usar GPT)
 from openai import OpenAI
@@ -73,10 +75,13 @@ scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive"
 ]
-cred_path = os.path.join(os.path.dirname(__file__), "credenciais_google.json")
-creds = ServiceAccountCredentials.from_json_keyfile_name(cred_path, scope)
+# Carregar credencial do Google a partir da variável de ambiente (Railway)
+google_creds_json = os.environ["GOOGLE_CREDS_JSON"]
+creds_dict = json.loads(google_creds_json)
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 gsheets_client = gspread.authorize(creds)
 sheet = gsheets_client.open_by_key("1qFTGu-NKLt-4g5tfa-BiKPm0xCLZ9ZEv5eafUyWqQow").worksheet("mensagens")
+
 
 # --- FastAPI e CORS ---
 app = FastAPI()
