@@ -1,3 +1,4 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
 
@@ -12,9 +13,12 @@ class RoleplayApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'IA Roleplay',
-      theme: ThemeData(primarySwatch: Colors.purple),
-      home: const HomeScreen(),
       debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.purple,
+        scaffoldBackgroundColor: Colors.white,
+      ),
+      home: const HomeScreen(),
     );
   }
 }

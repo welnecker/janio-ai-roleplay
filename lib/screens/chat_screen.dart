@@ -3,6 +3,7 @@ import '../services/api_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final Map<String, String> character;
+
   const ChatScreen({super.key, required this.character});
 
   @override
@@ -10,101 +11,171 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  final List<String> messages = [];
-  final TextEditingController _controller = TextEditingController();
   final ApiService apiService = ApiService();
-  int score = 0;
-  String emotionalState = "Distante";
+  final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  final List<Map<String, String>> messages = [];
   bool isLoading = false;
+  bool introShown = false;
+
+  int _score = 5; // nota padrão
+
+  final List<String> _modos = ["cotidiano", "sexy"];
+  String _modoSelecionado = "cotidiano";
+
+  final List<String> _modelos = ["gpt", "lmstudio"];
+  String _modeloSelecionado = "gpt";
 
   @override
   void initState() {
     super.initState();
-    carregarIntroducao();
+    _loadIntro();
   }
 
-  Future<void> carregarIntroducao() async {
+  void _loadIntro() async {
     try {
-      final intro = await apiService.getIntro();
+      final result = await apiService.getIntro(widget.character['name'] ?? 'Janio');
       setState(() {
-        messages.add(intro['response']);
-        score = intro['new_score'];
-        emotionalState = intro['state'];
+        messages.add({"role": "system", "content": result['resumo'] ?? ''});
+        introShown = true;
       });
     } catch (e) {
-      setState(() {
-        messages.add("[Erro ao carregar intro: ${e.toString()}]");
-      });
+      debugPrint("Erro ao carregar introdução: $e");
     }
   }
 
-  void sendMessage() async {
-    String text = _controller.text.trim();
-    if (text.isEmpty) return;
+  void _sendMessage(String text) async {
+    if (text.trim().isEmpty || isLoading) return;
 
     setState(() {
-      messages.add("Você: $text");
+      messages.add({"role": "user", "content": text});
       isLoading = true;
+      _controller.clear();
     });
 
     try {
-      var response = await apiService.sendMessage(text, score);
+      // Agora enviando o modelo escolhido também!
+      final result = await apiService.sendMessage(
+        text, _score, _modoSelecionado, _modeloSelecionado
+      );
       setState(() {
-        messages.add(response['response']);
-        score = response['new_score'];
-        emotionalState = response['state'];
+        messages.add({"role": "jennifer", "content": result["response"] ?? ''});
+        isLoading = false;
+        _score = result["new_score"] ?? 5;
       });
+      _scrollToBottom();
     } catch (e) {
-      setState(() {
-        messages.add("[Erro: ${e.toString()}]");
-      });
-    } finally {
       setState(() {
         isLoading = false;
       });
+      debugPrint("Erro ao enviar mensagem: $e");
     }
+  }
 
-    _controller.clear();
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("${widget.character['name']} • Estado: $emotionalState"),
+  title: Text(widget.character['name'] ?? "Chat"),
+  actions: [
+    IconButton(
+      icon: const Icon(Icons.home),
+      tooltip: "Voltar ao início",
+      onPressed: () {
+        Navigator.pop(context);
+      },
+    ),
+    // Este bloco impede o overflow:
+    Container(
+      margin: const EdgeInsets.only(right: 4),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            const Text("Nota: "),
+            DropdownButton<int>(
+              value: _score,
+              underline: Container(),
+              onChanged: (value) {
+                if (value != null) setState(() => _score = value);
+              },
+              items: List.generate(
+                11,
+                (i) => DropdownMenuItem(value: i, child: Text(i.toString())),
+              ),
+            ),
+            const SizedBox(width: 20),
+            const Text("Modo: "),
+            DropdownButton<String>(
+              value: _modoSelecionado,
+              underline: Container(),
+              onChanged: (value) {
+                if (value != null) setState(() => _modoSelecionado = value);
+              },
+              items: _modos.map((modo) => DropdownMenuItem(
+                value: modo,
+                child: Text(
+                  modo[0].toUpperCase() + modo.substring(1),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              )).toList(),
+            ),
+          ],
+        ),
       ),
+    ),
+  ],
+),
+
       body: Column(
         children: [
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(8.0),
-              children: messages.map((msg) {
-                final partes = msg.split('\n\n');
-                return Container(
-                  margin: const EdgeInsets.symmetric(vertical: 6.0),
-                  padding: const EdgeInsets.all(8.0),
-                  decoration: BoxDecoration(
-                    color: msg.startsWith("Você:") ? Colors.grey[200] : Colors.purple[50],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: partes.map((p) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: Text(p.trim()),
-                    )).toList(),
+            child: ListView.builder(
+              controller: _scrollController,
+              itemCount: messages.length,
+              itemBuilder: (_, index) {
+                final msg = messages[index];
+                final isUser = msg['role'] == 'user';
+                final isSystem = msg['role'] == 'system';
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: Align(
+                    alignment:
+                        isSystem ? Alignment.center : isUser ? Alignment.centerRight : Alignment.centerLeft,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isSystem
+                            ? Colors.grey[300]
+                            : isUser
+                                ? Colors.purple[100]
+                                : Colors.purple[50],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.all(12),
+                      child: Text(
+                        msg['content'] ?? '',
+                        style: const TextStyle(fontSize: 15),
+                      ),
+                    ),
                   ),
                 );
-              }).toList(),
+              },
             ),
           ),
-          if (isLoading)
-            const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: Text("⏳ Pensando..."),
-            ),
+          const Divider(height: 1),
           Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(12),
             child: Row(
               children: [
                 Expanded(
@@ -112,12 +183,16 @@ class _ChatScreenState extends State<ChatScreen> {
                     controller: _controller,
                     decoration: const InputDecoration(
                       hintText: "Digite sua mensagem...",
+                      border: OutlineInputBorder(),
                     ),
+                    onSubmitted: (_) => _sendMessage(_controller.text),
                   ),
                 ),
+                const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.send),
-                  onPressed: sendMessage,
+                  onPressed: () => _sendMessage(_controller.text),
+                  color: Colors.purple,
                 ),
               ],
             ),
