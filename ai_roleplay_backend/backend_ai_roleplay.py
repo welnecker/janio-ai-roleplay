@@ -12,9 +12,6 @@ from fastapi.responses import JSONResponse
 from dateutil import parser as dateparser
 from fastapi import FastAPI, Request, Query
 
-
-
-
 # OpenAI (só se for usar GPT)
 from openai import OpenAI
 
