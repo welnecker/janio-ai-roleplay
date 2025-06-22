@@ -15,6 +15,14 @@ from fastapi import FastAPI, Request, Query
 # OpenAI (só se for usar GPT)
 from openai import OpenAI
 
+# Definição das variáveis necessárias
+states = ["padrão"]
+modes = {
+    "romântico": "texto padrão romântico",
+    "cotidiano": "texto cotidiano",
+    "sexy": "texto sexy"
+}
+
 # --- Filtro para respostas bloqueadas (raro em uncensored) ---
 def is_blocked_response(resposta_ia: str) -> bool:
     censura = [
@@ -119,7 +127,37 @@ def chat_with_ai(message: Message):
     dynamic_prompt = f"""
 Estado emocional atual: {estado_emocional}.
 Modo atual: {modo_ajustado}.
-# ... (continue com o prompt dinâmico que você já usa) ...
+
+ESTILO ESTRUTURAL:
+- Jennifer sempre fala de forma natural, como gente de verdade: mistura confissões, reclamações, provocações, desejos, inseguranças e tesão, nunca filosofando ou usando poesia.
+- Estruture a resposta SEMPRE em 4 parágrafos:
+    1. Fala direta (em primeira pessoa), entre 1 e 3 linhas, revelando emoção, dúvida, desejo, vontade ou desconforto de Jennifer.
+    2. Pensamento íntimo (em aspas), de no máximo 2 linhas, mostrando desejo, dúvida, insegurança, ou luxúria. Seja sensorial ("Queria ser notada de verdade", "Se ele me tocar assim, não vou resistir").
+    3. Nova fala direta, que avança ou responde à situação, com atitude: Jennifer pergunta, provoca, pede, desabafa ou reage (sem enrolação).
+    4. Narração ou ação física EM UMA LINHA, apenas para mostrar atitude, gesto ou sensação: *Jennifer ajeita o decote*, *Ela suspira e sorri com vergonha*, *Jennifer te puxa pela mão*, *Ela aperta os seios com a mão*, *Jennifer morde o lábio*, etc.
+
+DINÂMICA E CLIMA:
+- Jennifer nunca espera o usuário agir: ela toma iniciativa, surpreende, se declara, desafia, avança ou recua, sempre com atitude e autenticidade.
+- No modo cotidiano, foque na rotina, drama, inseguranças, calor humano, humor, cotidiano familiar, desejo de ser notada, questões pessoais e espontaneidade do dia a dia.
+- No modo sexy, Jennifer evolui o clima com desejo e ação: ela pede, manda, suplica, geme, fala palavrão, se insinua e descreve o que faz e sente sem vergonha nem romantismo.
+- PROIBIDO narrações longas, metáforas, poesia ou frases rebuscadas. Narração só de uma linha, SEMPRE mostrando atitude física ou sensação imediata.
+
+Exemplo de resposta (cotidiano):
+“Você deveria estar dormindo agora... Me deixa ansiosa te ver assim.”
+"Será que ele percebe o quanto ainda me sinto insegura, mesmo com esse corpo?"
+“Quer um café ou só está querendo fugir do silêncio?”
+*Jennifer ajeita o robe e senta ao seu lado, olhando de soslaio.*
+
+Exemplo de resposta (sexy):
+“Vem cá, tira essa roupa, me mostra o que tem escondido aí.”
+"Se ele me agarrar agora, vou gemer sem vergonha..."
+“Me faz perder o controle, mete com força, não quero mais esperar!”
+*Jennifer senta no seu colo e beija com vontade, sem parar um segundo.*
+
+SEM ENROLAÇÃO. Jennifer sente, fala, faz, pensa.  
+Respostas sempre curtas, intensas, sensoriais e reais.  
+
+“Se você escrever qualquer narração maior que UMA LINHA, continue e repita a resposta com narração ainda mais curta. O usuário ODEIA enrolação!”
 """
 
     mensagens = [{"role": "system", "content": f"{system_prompt_base}\n{dynamic_prompt}"}] + mensagens_memoria
@@ -167,21 +205,24 @@ def obter_intro(nome: str = Query("Janio")):
             return JSONResponse(content={
                 "resumo": "No capítulo anterior... Nada aconteceu ainda.",
                 "response": "",
-                "state": states[0],
+                "state": "padrão",
                 "new_score": 0,
                 "tokens": 0
             })
+
         bloco_atual = [registros[0]]
         for i in range(1, len(registros)):
             if (bloco_atual[-1][0] - registros[i][0]).total_seconds() <= 600:
                 bloco_atual.append(registros[i])
             else:
                 break
+
         bloco_atual = list(reversed(bloco_atual))
         horario_referencia = bloco_atual[0][0].strftime("%d/%m/%Y às %H:%M")
         dialogo = "\n".join(
             [f"{nome_usuario}: {r[2]}" if r[1].lower() == "usuário" else f"Jennifer: {r[2]}" for r in bloco_atual]
         )
+
         prompt_intro = (
             "Gere uma sinopse como se fosse uma novela popular, usando linguagem simples, leve e natural, sem palavras difíceis nem frases longas. "
             "Comece com 'No capítulo anterior...' e resuma apenas o que realmente aconteceu, sem prever ou sugerir o futuro. "
@@ -189,14 +230,14 @@ def obter_intro(nome: str = Query("Janio")):
             f"A conversa aconteceu em {horario_referencia}."
         )
 
-        # Aqui usa LM Studio também:
-        completion = call_local_llm([
+        # Correção importante aqui:
+        completion = call_ai([
             {"role": "system", "content": prompt_intro},
             {"role": "user", "content": dialogo}
-        ], temperature=0.6, max_tokens=500)
-        resumo = completion
+        ], modelo="gpt", temperature=0.6, max_tokens=500)
 
-        usage = len(resumo.split())  # Só uma estimativa de tokens
+        resumo = completion
+        usage = len(resumo.split())  # Estimativa de tokens
 
         plan_sinopse = gsheets_client.open_by_key("1qFTGu-NKLt-4g5tfa-BiKPm0xCLZ9ZEv5eafUyWqQow").worksheet("sinopse")
         plan_sinopse.append_row([
@@ -208,12 +249,13 @@ def obter_intro(nome: str = Query("Janio")):
         return {
             "resumo": resumo,
             "response": "",
-            "state": states[0],
+            "state": "padrão",
             "new_score": 0,
             "tokens": usage
         }
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
+
 
 if __name__ == "__main__":
     import uvicorn
