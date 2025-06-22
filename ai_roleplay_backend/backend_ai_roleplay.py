@@ -10,6 +10,9 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from fastapi.responses import JSONResponse
 from dateutil import parser as dateparser
+from fastapi import FastAPI, Request, Query
+
+
 
 
 # OpenAI (só se for usar GPT)
@@ -145,6 +148,9 @@ Modo atual: {modo_ajustado}.
         "modo": modo_ajustado
     }
 
+def gerar_prompt_base(nome_usuario):
+    # Função simples só para não dar erro — personalize como quiser depois!
+    return f"Sinopse gerada para {nome_usuario}."
 
 @app.get("/intro/")
 def obter_intro(nome: str = Query("Janio")):
