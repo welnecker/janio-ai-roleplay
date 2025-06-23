@@ -59,7 +59,7 @@ class _ChatScreenState extends State<ChatScreen> {
         text, _score, _modoSelecionado, _modeloSelecionado
       );
       setState(() {
-        messages.add({"role": "jennifer", "content": result["response"] ?? ''});
+        messages.add({"role": "assistant", "content": result["response"] ?? ''});
         isLoading = false;
         _score = result["new_score"] ?? 5;
       });
@@ -140,39 +140,45 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              itemCount: messages.length,
-              itemBuilder: (_, index) {
-                final msg = messages[index];
-                final isUser = msg['role'] == 'user';
-                final isSystem = msg['role'] == 'system';
+  child: ListView.builder(
+    controller: _scrollController,
+    itemCount: messages.length,
+    itemBuilder: (_, index) {
+      final msg = messages[index];
+      final role = msg['role'];
+      final isUser = role == 'user';
+      final isSystem = role == 'system';
+      final isJennifer = role == 'assistant';
 
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: Align(
-                    alignment:
-                        isSystem ? Alignment.center : isUser ? Alignment.centerRight : Alignment.centerLeft,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isSystem
-                            ? Colors.grey[300]
-                            : isUser
-                                ? Colors.purple[100]
-                                : Colors.purple[50],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.all(12),
-                      child: Text(
-                        msg['content'] ?? '',
-                        style: const TextStyle(fontSize: 15),
-                      ),
-                    ),
-                  ),
-                );
-              },
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Align(
+          alignment: isSystem
+              ? Alignment.center
+              : isUser
+                  ? Alignment.centerRight
+                  : Alignment.centerLeft,
+          child: Container(
+            decoration: BoxDecoration(
+              color: isSystem
+                  ? Colors.grey[300]
+                  : isUser
+                      ? Colors.purple[100]
+                      : Colors.purple[50],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.all(12),
+            child: Text(
+              isJennifer ? "Jennifer: ${msg['content']}" : msg['content'] ?? '',
+              style: const TextStyle(fontSize: 15),
             ),
           ),
+        ),
+      );
+    },
+  ),
+),
+
           const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.all(12),

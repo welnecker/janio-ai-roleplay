@@ -4,7 +4,8 @@ import 'package:http/http.dart' as http;
 /// Classe para comunicação com o backend (FastAPI)
 class ApiService {
   //final String baseUrl = "http://127.0.0.1:8000"; // altere se necessário
-  final String baseUrl = "http://192.168.0.25:8000"; // O IP do seu PC
+  //final String baseUrl = "http://192.168.0.25:8000"; // O IP do seu PC
+    final String baseUrl = "https://web-production-76f08.up.railway.app"; // BACKEND ONLINE
 
   /// Envia uma mensagem do usuário com nota de 0 a 10, modo selecionado e modelo (GPT ou LM Studio)
   Future<Map<String, dynamic>> sendMessage(
