@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // Altere para seu endpoint real no Railway
   final String baseUrl = "https://web-production-76f08.up.railway.app";
 
   /// Lista todos os personagens disponíveis
@@ -11,7 +10,8 @@ class ApiService {
     final response = await http.get(url);
 
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
+      final decoded = utf8.decode(response.bodyBytes);
+      final List<dynamic> data = jsonDecode(decoded);
       return data.cast<Map<String, dynamic>>();
     } else {
       throw Exception("Erro ao carregar personagens");
@@ -38,7 +38,8 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      final decoded = utf8.decode(response.bodyBytes);
+      return jsonDecode(decoded);
     } else {
       throw Exception("Erro ao enviar mensagem");
     }
@@ -53,7 +54,8 @@ class ApiService {
     final response = await http.get(url);
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      final decoded = utf8.decode(response.bodyBytes);
+      return jsonDecode(decoded);
     } else {
       throw Exception("Erro ao carregar introdução");
     }
