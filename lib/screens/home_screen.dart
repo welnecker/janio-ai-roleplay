@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
 import 'chat_screen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -10,93 +11,80 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final ApiService apiService = ApiService();
-  List<Map<String, String>> personagens = [];
-  bool isLoading = true;
+  List<Map<String, dynamic>> personagens = [];
+  bool carregando = true;
 
   @override
   void initState() {
     super.initState();
-    _carregarPersonagens();
+    carregarPersonagens();
   }
 
-  Future<void> _carregarPersonagens() async {
+  Future<void> carregarPersonagens() async {
+    final url = Uri.parse("https://web-production-76f08.up.railway.app/personagens/");
     try {
-      final data = await apiService.getPersonagens();
-      setState(() {
-        personagens = List<Map<String, String>>.from(data);
-        isLoading = false;
-      });
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final List dados = jsonDecode(response.body);
+        setState(() {
+          personagens = dados.cast<Map<String, dynamic>>();
+          carregando = false;
+        });
+      } else {
+        setState(() => carregando = false);
+        print("Erro: status ${response.statusCode}");
+      }
     } catch (e) {
-      debugPrint("Erro ao carregar personagens: $e");
-      setState(() => isLoading = false);
+      print("Erro ao carregar personagens: $e");
+      setState(() => carregando = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Escolha seu personagem')),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : GridView.builder(
-              padding: const EdgeInsets.all(12),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.75,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
-              itemCount: personagens.length,
-              itemBuilder: (_, index) {
-                final p = personagens[index];
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => ChatScreen(character: p),
-                    ));
-                  },
+    if (carregando) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
-                  child: Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Column(
-                      children: [
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                            child: Image.network(
-                              p['foto'] ?? '',
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
-                            ),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Column(
-                            children: [
-                              Text(
-                                p['nome'] ?? '',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                p['descricao'] ?? '',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+    if (personagens.isEmpty) {
+      return const Scaffold(
+        body: Center(child: Text("Nenhum personagem encontrado.")),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Escolha seu personagem'),
+      ),
+      body: ListView.builder(
+        itemCount: personagens.length,
+        itemBuilder: (context, index) {
+          final personagem = personagens[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundImage: NetworkImage(personagem['foto']),
+              ),
+              title: Text(personagem['nome']),
+              subtitle: Text(personagem['descricao']),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ChatScreen(character: {
+                      "nome": personagem['nome'],
+                      "descricao": personagem['descricao'],
+                    }),
                   ),
                 );
               },
             ),
+          );
+        },
+      ),
     );
   }
 }

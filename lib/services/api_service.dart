@@ -2,51 +2,37 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // Altere para o IP do seu backend local ou remoto:
-  final String baseUrl = "http://127.0.0.1:8000";
+  // Altere para seu endpoint real no Railway
+  final String baseUrl = "https://web-production-76f08.up.railway.app";
 
-  /// Obtém a lista de personagens
+  /// Lista todos os personagens disponíveis
   Future<List<Map<String, dynamic>>> getPersonagens() async {
-    final url = Uri.parse('$baseUrl/personagens/'); // <- barra final corrigida
+    final url = Uri.parse('$baseUrl/personagens/');
     final response = await http.get(url);
 
     if (response.statusCode == 200) {
-      final List data = jsonDecode(response.body);
+      final List<dynamic> data = jsonDecode(response.body);
       return data.cast<Map<String, dynamic>>();
     } else {
-      throw Exception("Erro ao carregar personagens: ${response.statusCode} - ${response.body}");
+      throw Exception("Erro ao carregar personagens");
     }
   }
 
-  /// Obtém a introdução/sinopse do personagem
-  Future<Map<String, dynamic>> getIntro(String personagem) async {
-    final url = Uri.parse('$baseUrl/intro/?personagem=$personagem'); // <-- se existir esse endpoint
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception("Erro ao carregar introdução: ${response.statusCode} - ${response.body}");
-    }
-  }
-
-  /// Envia mensagem para o backend
-  Future<Map<String, dynamic>> sendMessage(
-    String message,
-    int score,
-    String modo,
-    String modelo,
-    {String personagem = "Jennifer"}
-  ) async {
+  /// Envia uma mensagem e recebe a resposta da IA
+  Future<Map<String, dynamic>> sendMessage({
+    required String mensagem,
+    required int score,
+    required String modo,
+    required String personagem,
+  }) async {
     final url = Uri.parse('$baseUrl/chat/');
     final response = await http.post(
       url,
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
-        "user_input": message,
+        "user_input": mensagem,
         "score": score,
         "modo": modo,
-        "modelo": modelo,
         "personagem": personagem,
       }),
     );
@@ -54,7 +40,22 @@ class ApiService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
-      throw Exception("Erro ao enviar mensagem: ${response.statusCode} - ${response.body}");
+      throw Exception("Erro ao enviar mensagem");
+    }
+  }
+
+  /// Carrega o resumo introdutório do personagem
+  Future<Map<String, dynamic>> getIntro({
+    required String nome,
+    required String personagem,
+  }) async {
+    final url = Uri.parse('$baseUrl/intro/?nome=$nome&personagem=$personagem');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("Erro ao carregar introdução");
     }
   }
 }

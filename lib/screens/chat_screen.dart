@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 
 class ChatScreen extends StatefulWidget {
-  final Map<String, String> character;
+  final Map<String, dynamic> character;
 
   const ChatScreen({super.key, required this.character});
 
@@ -15,204 +15,119 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<Map<String, String>> messages = [];
-  bool isLoading = false;
-  bool introShown = false;
-
-  int _score = 5;
-  String _modoSelecionado = "cotidiano";
-  String _modeloSelecionado = "GPT";
-
-  final List<String> _modos = ["cotidiano", "sexy"];
-  final List<String> _modelos = ["GPT", "LM Studio"];
+  bool loading = false;
+  String introResumo = "";
 
   @override
   void initState() {
     super.initState();
-    _loadIntro();
+    carregarIntro();
   }
 
-  void _loadIntro() async {
-    try {
-      final result = await apiService.getIntro(widget.character['name'] ?? 'Janio');
-
-      setState(() {
-        messages.add({"role": "system", "content": result['resumo'] ?? ''});
-        introShown = true;
-      });
-    } catch (e) {
-      debugPrint("Erro ao carregar introdução: $e");
-    }
+  Future<void> carregarIntro() async {
+    final result = await apiService.getIntro(
+      nome: "Janio",
+      personagem: widget.character["nome"],
+    );
+    setState(() {
+      introResumo = result["resumo"];
+    });
   }
 
-  void _sendMessage(String text) async {
-  if (text.trim().isEmpty || isLoading) return;
+  Future<void> enviarMensagem() async {
+    final mensagem = _controller.text.trim();
+    if (mensagem.isEmpty) return;
 
-  setState(() {
-    messages.add({"role": "user", "content": text});
-    isLoading = true;
-    _controller.clear();
-  });
+    setState(() {
+      loading = true;
+      messages.add({"role": "user", "content": mensagem});
+      _controller.clear();
+    });
 
-  try {
-    // Envia nome do personagem junto
-    final result = await apiService.sendMessage(
-      text,
-      _score,
-      _modoSelecionado,
-      "gpt", // ou "lmstudio" se estiver usando local
-      personagem: widget.character['name'] ?? "Jennifer",
+    final response = await apiService.sendMessage(
+      mensagem: mensagem,
+      score: 5,
+      modo: "romântico",
+      personagem: widget.character["nome"],
     );
 
     setState(() {
-      messages.add({"role": "jennifer", "content": result["response"] ?? ''});
-      isLoading = false;
-      _score = result["new_score"] ?? 5;
+      messages.add({"role": "assistant", "content": response["response"]});
+      loading = false;
     });
-    _scrollToBottom();
-  } catch (e) {
-    setState(() {
-      isLoading = false;
-    });
-    debugPrint("Erro ao enviar mensagem: $e");
-  }
-}
 
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeOut,
-      );
-    });
+    await Future.delayed(const Duration(milliseconds: 100));
+    _scrollController.animateTo(
+      _scrollController.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.character['name'] ?? "Chat"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.home),
-            tooltip: "Voltar ao início",
-            onPressed: () {
-              Navigator.pop(context);
-            },
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: [
-                const Text("Nota: "),
-                DropdownButton<int>(
-                  value: _score,
-                  underline: Container(),
-                  onChanged: (value) {
-                    if (value != null) setState(() => _score = value);
-                  },
-                  items: List.generate(
-                    11,
-                    (i) => DropdownMenuItem(value: i, child: Text(i.toString())),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                const Text("Modo: "),
-                DropdownButton<String>(
-                  value: _modoSelecionado,
-                  underline: Container(),
-                  onChanged: (value) {
-                    if (value != null) setState(() => _modoSelecionado = value);
-                  },
-                  items: _modos.map((modo) => DropdownMenuItem(
-                    value: modo,
-                    child: Text(
-                      modo[0].toUpperCase() + modo.substring(1),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  )).toList(),
-                ),
-                const SizedBox(width: 16),
-                const Text("Modelo: "),
-                DropdownButton<String>(
-                  value: _modeloSelecionado,
-                  underline: Container(),
-                  onChanged: (value) {
-                    if (value != null) setState(() => _modeloSelecionado = value);
-                  },
-                  items: _modelos.map((modelo) => DropdownMenuItem(
-                    value: modelo,
-                    child: Text(
-                      modelo,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  )).toList(),
-                ),
-              ],
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.character["nome"]),
+            Text(
+              widget.character["descricao"],
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
       body: Column(
         children: [
+          if (introResumo.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Text(
+                introResumo,
+                style: const TextStyle(fontStyle: FontStyle.italic),
+              ),
+            ),
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
               itemCount: messages.length,
-              itemBuilder: (_, index) {
+              itemBuilder: (context, index) {
                 final msg = messages[index];
-                final isUser = msg['role'] == 'user';
-                final isSystem = msg['role'] == 'system';
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: Align(
-                    alignment:
-                        isSystem ? Alignment.center : isUser ? Alignment.centerRight : Alignment.centerLeft,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isSystem
-                            ? Colors.grey[300]
-                            : isUser
-                                ? Colors.purple[100]
-                                : Colors.purple[50],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.all(12),
-                      child: Text(
-                        msg['content'] ?? '',
-                        style: const TextStyle(fontSize: 15),
-                      ),
+                final isUser = msg["role"] == "user";
+                return Align(
+                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: isUser ? Colors.blue[100] : Colors.grey[200],
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                    child: Text(msg["content"]!),
                   ),
                 );
               },
             ),
           ),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(
-                      hintText: "Digite sua mensagem...",
-                      border: OutlineInputBorder(),
-                    ),
-                    onSubmitted: (_) => _sendMessage(_controller.text),
+          if (loading) const LinearProgressIndicator(),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  decoration: const InputDecoration(
+                    hintText: "Digite sua mensagem...",
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12),
                   ),
                 ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: () => _sendMessage(_controller.text),
-                  color: Colors.purple,
-                ),
-              ],
-            ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.send),
+                onPressed: loading ? null : enviarMensagem,
+              ),
+            ],
           ),
         ],
       ),
