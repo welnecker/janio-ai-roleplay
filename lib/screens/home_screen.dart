@@ -20,12 +20,13 @@ class _HomeScreenState extends State<HomeScreen> {
     carregarPersonagens();
   }
 
-  Future<void> carregarPersonagens() async {
+    Future<void> carregarPersonagens() async {
     final url = Uri.parse("https://web-production-76f08.up.railway.app/personagens/");
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
-        final List dados = jsonDecode(response.body);
+        final decoded = utf8.decode(response.bodyBytes); // <-- CORREÇÃO
+        final List dados = jsonDecode(decoded);           // <-- usa UTF-8 corretamente
         setState(() {
           personagens = dados.cast<Map<String, dynamic>>();
           carregando = false;
@@ -39,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => carregando = false);
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
