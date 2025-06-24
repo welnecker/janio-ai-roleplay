@@ -11,10 +11,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Remove old caches
+        run: rm -rf .dart_tool .packages pubspec.lock
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.1'
+
+      - name: Clean Flutter
+        run: flutter clean
 
       - name: Install dependencies
         run: flutter pub get
