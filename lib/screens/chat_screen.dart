@@ -146,7 +146,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
           ),
-          IconButton(
+                    IconButton(
             icon: const Icon(Icons.send),
             onPressed: loading ? null : enviarMensagem,
           ),
@@ -154,4 +154,6 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     ],
   ),
-),
+);
+  }
+}
