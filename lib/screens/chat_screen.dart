@@ -18,13 +18,12 @@ class _ChatScreenState extends State<ChatScreen> {
   bool isLoading = false;
   bool introShown = false;
 
-  int _score = 5; // nota padrão
+  int _score = 5;
+  String _modoSelecionado = "cotidiano";
+  String _modeloSelecionado = "GPT";
 
   final List<String> _modos = ["cotidiano", "sexy"];
-  String _modoSelecionado = "cotidiano";
-
-  final List<String> _modelos = ["gpt", "lmstudio"];
-  String _modeloSelecionado = "gpt";
+  final List<String> _modelos = ["GPT", "LM Studio"];
 
   @override
   void initState() {
@@ -35,6 +34,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void _loadIntro() async {
     try {
       final result = await apiService.getIntro(widget.character['name'] ?? 'Janio');
+
       setState(() {
         messages.add({"role": "system", "content": result['resumo'] ?? ''});
         introShown = true;
@@ -45,32 +45,38 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _sendMessage(String text) async {
-    if (text.trim().isEmpty || isLoading) return;
+  if (text.trim().isEmpty || isLoading) return;
+
+  setState(() {
+    messages.add({"role": "user", "content": text});
+    isLoading = true;
+    _controller.clear();
+  });
+
+  try {
+    // Envia nome do personagem junto
+    final result = await apiService.sendMessage(
+      text,
+      _score,
+      _modoSelecionado,
+      "gpt", // ou "lmstudio" se estiver usando local
+      personagem: widget.character['name'] ?? "Jennifer",
+    );
 
     setState(() {
-      messages.add({"role": "user", "content": text});
-      isLoading = true;
-      _controller.clear();
+      messages.add({"role": "jennifer", "content": result["response"] ?? ''});
+      isLoading = false;
+      _score = result["new_score"] ?? 5;
     });
-
-    try {
-      // Agora enviando o modelo escolhido também!
-      final result = await apiService.sendMessage(
-        text, _score, _modoSelecionado, _modeloSelecionado
-      );
-      setState(() {
-        messages.add({"role": "assistant", "content": result["response"] ?? ''});
-        isLoading = false;
-        _score = result["new_score"] ?? 5;
-      });
-      _scrollToBottom();
-    } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
-      debugPrint("Erro ao enviar mensagem: $e");
-    }
+    _scrollToBottom();
+  } catch (e) {
+    setState(() {
+      isLoading = false;
+    });
+    debugPrint("Erro ao enviar mensagem: $e");
   }
+}
+
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -86,99 +92,104 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-  title: Text(widget.character['name'] ?? "Chat"),
-  actions: [
-    IconButton(
-      icon: const Icon(Icons.home),
-      tooltip: "Voltar ao início",
-      onPressed: () {
-        Navigator.pop(context);
-      },
-    ),
-    // Este bloco impede o overflow:
-    Container(
-      margin: const EdgeInsets.only(right: 4),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            const Text("Nota: "),
-            DropdownButton<int>(
-              value: _score,
-              underline: Container(),
-              onChanged: (value) {
-                if (value != null) setState(() => _score = value);
-              },
-              items: List.generate(
-                11,
-                (i) => DropdownMenuItem(value: i, child: Text(i.toString())),
-              ),
-            ),
-            const SizedBox(width: 20),
-            const Text("Modo: "),
-            DropdownButton<String>(
-              value: _modoSelecionado,
-              underline: Container(),
-              onChanged: (value) {
-                if (value != null) setState(() => _modoSelecionado = value);
-              },
-              items: _modos.map((modo) => DropdownMenuItem(
-                value: modo,
-                child: Text(
-                  modo[0].toUpperCase() + modo.substring(1),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+        title: Text(widget.character['name'] ?? "Chat"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.home),
+            tooltip: "Voltar ao início",
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                const Text("Nota: "),
+                DropdownButton<int>(
+                  value: _score,
+                  underline: Container(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => _score = value);
+                  },
+                  items: List.generate(
+                    11,
+                    (i) => DropdownMenuItem(value: i, child: Text(i.toString())),
+                  ),
                 ),
-              )).toList(),
+                const SizedBox(width: 16),
+                const Text("Modo: "),
+                DropdownButton<String>(
+                  value: _modoSelecionado,
+                  underline: Container(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => _modoSelecionado = value);
+                  },
+                  items: _modos.map((modo) => DropdownMenuItem(
+                    value: modo,
+                    child: Text(
+                      modo[0].toUpperCase() + modo.substring(1),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  )).toList(),
+                ),
+                const SizedBox(width: 16),
+                const Text("Modelo: "),
+                DropdownButton<String>(
+                  value: _modeloSelecionado,
+                  underline: Container(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => _modeloSelecionado = value);
+                  },
+                  items: _modelos.map((modelo) => DropdownMenuItem(
+                    value: modelo,
+                    child: Text(
+                      modelo,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  )).toList(),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    ),
-  ],
-),
-
       body: Column(
         children: [
           Expanded(
-  child: ListView.builder(
-    controller: _scrollController,
-    itemCount: messages.length,
-    itemBuilder: (_, index) {
-      final msg = messages[index];
-      final role = msg['role'];
-      final isUser = role == 'user';
-      final isSystem = role == 'system';
-      final isJennifer = role == 'assistant';
+            child: ListView.builder(
+              controller: _scrollController,
+              itemCount: messages.length,
+              itemBuilder: (_, index) {
+                final msg = messages[index];
+                final isUser = msg['role'] == 'user';
+                final isSystem = msg['role'] == 'system';
 
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        child: Align(
-          alignment: isSystem
-              ? Alignment.center
-              : isUser
-                  ? Alignment.centerRight
-                  : Alignment.centerLeft,
-          child: Container(
-            decoration: BoxDecoration(
-              color: isSystem
-                  ? Colors.grey[300]
-                  : isUser
-                      ? Colors.purple[100]
-                      : Colors.purple[50],
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.all(12),
-            child: Text(
-              isJennifer ? "Jennifer: ${msg['content']}" : msg['content'] ?? '',
-              style: const TextStyle(fontSize: 15),
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: Align(
+                    alignment:
+                        isSystem ? Alignment.center : isUser ? Alignment.centerRight : Alignment.centerLeft,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isSystem
+                            ? Colors.grey[300]
+                            : isUser
+                                ? Colors.purple[100]
+                                : Colors.purple[50],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.all(12),
+                      child: Text(
+                        msg['content'] ?? '',
+                        style: const TextStyle(fontSize: 15),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
-        ),
-      );
-    },
-  ),
-),
-
           const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.all(12),
