@@ -16,15 +16,17 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final List<Map<String, String>> messages = [];
   bool loading = false;
-  String introResumo = "";
+  bool primeiraInteracao = true;
 
   @override
   void initState() {
     super.initState();
-    carregarIntro();
+    iniciarConversa();
   }
 
-  Future<void> carregarIntro() async {
+  Future<void> iniciarConversa() async {
+    setState(() => loading = true);
+
     final response = await apiService.sendMessage(
       mensagem: "Iniciar conversa",
       score: 5,
@@ -33,11 +35,13 @@ class _ChatScreenState extends State<ChatScreen> {
       primeiraInteracao: true,
     );
 
+    if (response["sinopse"] != null && response["sinopse"].toString().isNotEmpty) {
+      messages.add({"role": "narrador", "content": response["sinopse"]});
+    }
+
     setState(() {
-      introResumo = response["sinopse"] ?? "";
-      if (response["response"] != null && response["response"].isNotEmpty) {
-        messages.add({"role": "assistant", "content": response["response"]});
-      }
+      loading = false;
+      primeiraInteracao = false;
     });
   }
 
@@ -89,14 +93,6 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
-          if (introResumo.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Text(
-                introResumo,
-                style: const TextStyle(fontStyle: FontStyle.italic),
-              ),
-            ),
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
@@ -104,16 +100,32 @@ class _ChatScreenState extends State<ChatScreen> {
               itemBuilder: (context, index) {
                 final msg = messages[index];
                 final isUser = msg["role"] == "user";
+                final isIA = msg["role"] == "assistant";
+                final isNarrador = msg["role"] == "narrador";
+
                 return Align(
-                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                  alignment: isUser
+                      ? Alignment.centerRight
+                      : isNarrador
+                          ? Alignment.center
+                          : Alignment.centerLeft,
                   child: Container(
                     margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isUser ? Colors.blue[100] : Colors.grey[200],
+                      color: isUser
+                          ? Colors.blue[100]
+                          : isNarrador
+                              ? Colors.amber[50]
+                              : Colors.grey[200],
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(msg["content"]!),
+                    child: Text(
+                      msg["content"]!,
+                      style: TextStyle(
+                        fontStyle: isNarrador ? FontStyle.italic : FontStyle.normal,
+                      ),
+                    ),
                   ),
                 );
               },
