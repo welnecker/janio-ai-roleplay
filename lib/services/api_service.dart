@@ -35,4 +35,20 @@ class ApiService {
       };
     }
   }
+
+  /// Recupera o resumo introdutório (sinopse) para o personagem
+  Future<Map<String, dynamic>> getIntro({
+    required String nome,
+    required String personagem,
+  }) async {
+    final url = Uri.parse("$baseUrl/intro/?nome=$nome&personagem=$personagem");
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    } else {
+      print("Erro ao obter resumo: ${response.statusCode}");
+      return {"resumo": ""};
+    }
+  }
 }
