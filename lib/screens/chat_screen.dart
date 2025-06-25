@@ -25,13 +25,17 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> carregarIntro() async {
-    final result = await apiService.getIntro(
-      nome: "Janio",
-      personagem: widget.character["nome"],
-    );
-    setState(() {
-      introResumo = result["resumo"];
-    });
+    try {
+      final result = await apiService.getIntro(
+        nome: "Janio",
+        personagem: widget.character["nome"],
+      );
+      setState(() {
+        introResumo = result["resumo"] ?? "";
+      });
+    } catch (e) {
+      print("Erro ao carregar resumo: $e");
+    }
   }
 
   Future<void> enviarMensagem() async {
@@ -64,6 +68,23 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  List<TextSpan> _formatarResumo(String texto) {
+    return texto.split('\n').map((linha) {
+      final trimmed = linha.trim();
+      final isThought = trimmed.startsWith("*") && trimmed.endsWith("*");
+      final isSpeech = trimmed.startsWith('"') && trimmed.endsWith('"');
+      return TextSpan(
+        text: linha + '\n',
+        style: TextStyle(
+          fontStyle: isThought ? FontStyle.italic : FontStyle.normal,
+          color: isSpeech
+              ? Colors.purple[300]
+              : Colors.white.withOpacity(isThought ? 0.85 : 1),
+        ),
+      );
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -93,20 +114,7 @@ class _ChatScreenState extends State<ChatScreen> {
               child: RichText(
                 text: TextSpan(
                   style: const TextStyle(fontSize: 14),
-                  children: introResumo.split("\n").map((linha) {
-                    final trimmed = linha.trim();
-                    final isThought = trimmed.startsWith("*") && trimmed.endsWith("*");
-                    final isSpeech = trimmed.startsWith('"') && trimmed.endsWith('"');
-                    return TextSpan(
-                      text: linha + '\n',
-                      style: TextStyle(
-                        fontStyle: isThought ? FontStyle.italic : FontStyle.normal,
-                        color: isSpeech
-                            ? Colors.purple[300]
-                            : Colors.white.withOpacity(isThought ? 0.85 : 1),
-                      ),
-                    );
-                  }).toList(),
+                  children: _formatarResumo(introResumo),
                 ),
               ),
             ),
@@ -126,7 +134,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       color: isUser ? Colors.blue[100] : Colors.grey[200],
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(msg["content"]!),
+                    child: Text(msg["content"] ?? ""),
                   ),
                 );
               },
