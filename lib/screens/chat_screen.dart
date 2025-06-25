@@ -30,11 +30,12 @@ class _ChatScreenState extends State<ChatScreen> {
         nome: "Janio",
         personagem: widget.character["nome"],
       );
+      print("Resumo recebido: \${result["resumo"]}");
       setState(() {
         introResumo = result["resumo"] ?? "";
       });
     } catch (e) {
-      print("Erro ao carregar resumo: $e");
+      print("Erro ao carregar resumo: \$e");
     }
   }
 
@@ -102,7 +103,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
-          if (introResumo.isNotEmpty)
+          if (introResumo.trim().isNotEmpty)
             Container(
               width: double.infinity,
               margin: const EdgeInsets.all(12),
@@ -126,12 +127,15 @@ class _ChatScreenState extends State<ChatScreen> {
                 final msg = messages[index];
                 final isUser = msg["role"] == "user";
                 return Align(
-                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                  alignment:
+                      isUser ? Alignment.centerRight : Alignment.centerLeft,
                   child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                    margin:
+                        const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: isUser ? Colors.blue[100] : Colors.grey[200],
+                      color:
+                          isUser ? Colors.blue[100] : Colors.grey[200],
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(msg["content"] ?? ""),
