@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 class ApiService {
   final String baseUrl = "https://web-production-76f08.up.railway.app";
 
-  /// Envia uma mensagem para o personagem selecionado
+  /// Envia uma mensagem ao backend e recebe a resposta da IA
   Future<Map<String, dynamic>> sendMessage({
     required String mensagem,
     required int score,
@@ -26,11 +26,12 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      return jsonDecode(utf8.decode(response.bodyBytes));
     } else {
+      print("Erro ao enviar mensagem: ${response.statusCode}");
       return {
+        "response": "Erro ao se comunicar com a IA.",
         "sinopse": "",
-        "response": "Erro ao se comunicar com o servidor (${response.statusCode})."
       };
     }
   }
