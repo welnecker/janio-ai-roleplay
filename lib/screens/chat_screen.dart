@@ -33,7 +33,9 @@ class _ChatScreenState extends State<ChatScreen> {
       print("Resumo recebido: ${result['resumo']}");
       setState(() {
         introResumo = result["resumo"] ?? "";
-        messages.add({"role": "assistant", "content": introResumo});
+        if (introResumo.isNotEmpty) {
+          messages.insert(0, {"role": "assistant", "content": introResumo});
+        }
       });
     } catch (e) {
       print("Erro ao carregar resumo: $e");
