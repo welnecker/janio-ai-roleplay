@@ -16,32 +16,21 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final List<Map<String, String>> messages = [];
   bool loading = false;
-  bool primeiraInteracao = true;
+  String introResumo = "";
 
   @override
   void initState() {
     super.initState();
-    iniciarConversa();
+    carregarIntro();
   }
 
-  Future<void> iniciarConversa() async {
-    setState(() => loading = true);
-
-    final response = await apiService.sendMessage(
-      mensagem: "Iniciar conversa",
-      score: 5,
-      modo: "romântico",
+  Future<void> carregarIntro() async {
+    final result = await apiService.getIntro(
+      nome: "Janio",
       personagem: widget.character["nome"],
-      primeiraInteracao: true,
     );
-
-    if (response["sinopse"] != null && response["sinopse"].toString().isNotEmpty) {
-      messages.add({"role": "narrador", "content": response["sinopse"]});
-    }
-
     setState(() {
-      loading = false;
-      primeiraInteracao = false;
+      introResumo = result["resumo"];
     });
   }
 
@@ -60,7 +49,6 @@ class _ChatScreenState extends State<ChatScreen> {
       score: 5,
       modo: "romântico",
       personagem: widget.character["nome"],
-      primeiraInteracao: false,
     );
 
     setState(() {
@@ -93,6 +81,31 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
+          if (introResumo.isNotEmpty)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: RichText(
+                text: TextSpan(
+                  children: introResumo.split("\n").map((linha) {
+                    final isThought = linha.trim().startsWith("*") && linha.trim().endsWith("*");
+                    final isSpeech = RegExp(r'^\".*\"|“.*”\$').hasMatch(linha.trim());
+                    final style = TextStyle(
+                      fontStyle: isThought ? FontStyle.italic : FontStyle.normal,
+                      color: isSpeech
+                          ? Colors.purple[300]
+                          : Colors.white.withOpacity(isThought ? 0.85 : 1),
+                    );
+                    return TextSpan(text: linha + '\n', style: style);
+                  }).toList(),
+                ),
+              ),
+            ),
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
@@ -100,32 +113,16 @@ class _ChatScreenState extends State<ChatScreen> {
               itemBuilder: (context, index) {
                 final msg = messages[index];
                 final isUser = msg["role"] == "user";
-                final isIA = msg["role"] == "assistant";
-                final isNarrador = msg["role"] == "narrador";
-
                 return Align(
-                  alignment: isUser
-                      ? Alignment.centerRight
-                      : isNarrador
-                          ? Alignment.center
-                          : Alignment.centerLeft,
+                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                   child: Container(
                     margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: isUser
-                          ? Colors.blue[100]
-                          : isNarrador
-                              ? Colors.amber[50]
-                              : Colors.grey[200],
+                      color: isUser ? Colors.blue[100] : Colors.grey[200],
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(
-                      msg["content"]!,
-                      style: TextStyle(
-                        fontStyle: isNarrador ? FontStyle.italic : FontStyle.normal,
-                      ),
-                    ),
+                    child: Text(msg["content"]!),
                   ),
                 );
               },
