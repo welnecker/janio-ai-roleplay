@@ -30,12 +30,12 @@ class _ChatScreenState extends State<ChatScreen> {
         nome: "Janio",
         personagem: widget.character["nome"],
       );
-      print("Resumo recebido: \${result["resumo"]}");
+      print("Resumo recebido: ${result["resumo"]}");
       setState(() {
         introResumo = result["resumo"] ?? "";
       });
     } catch (e) {
-      print("Erro ao carregar resumo: \$e");
+      print("Erro ao carregar resumo: $e");
     }
   }
 
