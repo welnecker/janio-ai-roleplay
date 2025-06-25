@@ -30,12 +30,13 @@ class _ChatScreenState extends State<ChatScreen> {
         nome: "Janio",
         personagem: widget.character["nome"],
       );
-      print("Resumo recebido: ${result["resumo"]}");
+      print("Resumo recebido: \${result["resumo"]}");
       setState(() {
         introResumo = result["resumo"] ?? "";
+        messages.add({"role": "assistant", "content": introResumo});
       });
     } catch (e) {
-      print("Erro ao carregar resumo: $e");
+      print("Erro ao carregar resumo: \$e");
     }
   }
 
@@ -103,22 +104,6 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
-          if (introResumo.trim().isNotEmpty)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.all(12),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.6),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: RichText(
-                text: TextSpan(
-                  style: const TextStyle(fontSize: 14),
-                  children: _formatarResumo(introResumo),
-                ),
-              ),
-            ),
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
@@ -126,6 +111,26 @@ class _ChatScreenState extends State<ChatScreen> {
               itemBuilder: (context, index) {
                 final msg = messages[index];
                 final isUser = msg["role"] == "user";
+
+                bool isResumo = msg["role"] == "assistant" && index == 0 && introResumo.isNotEmpty;
+                if (isResumo) {
+                  return Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: RichText(
+                      text: TextSpan(
+                        style: const TextStyle(fontSize: 14),
+                        children: _formatarResumo(introResumo),
+                      ),
+                    ),
+                  );
+                }
+
                 return Align(
                   alignment:
                       isUser ? Alignment.centerRight : Alignment.centerLeft,
