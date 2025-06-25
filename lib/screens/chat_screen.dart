@@ -25,12 +25,19 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> carregarIntro() async {
-    final result = await apiService.getIntro(
-      nome: "Janio",
+    final response = await apiService.sendMessage(
+      mensagem: "Iniciar conversa",
+      score: 5,
+      modo: "romântico",
       personagem: widget.character["nome"],
+      primeiraInteracao: true,
     );
+
     setState(() {
-      introResumo = result["resumo"];
+      introResumo = response["sinopse"] ?? "";
+      if (response["response"] != null && response["response"].isNotEmpty) {
+        messages.add({"role": "assistant", "content": response["response"]});
+      }
     });
   }
 
@@ -49,6 +56,7 @@ class _ChatScreenState extends State<ChatScreen> {
       score: 5,
       modo: "romântico",
       personagem: widget.character["nome"],
+      primeiraInteracao: false,
     );
 
     setState(() {
