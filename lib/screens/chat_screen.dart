@@ -92,16 +92,20 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               child: RichText(
                 text: TextSpan(
+                  style: const TextStyle(fontSize: 14),
                   children: introResumo.split("\n").map((linha) {
-                    final isThought = linha.trim().startsWith("*") && linha.trim().endsWith("*");
-                    final isSpeech = RegExp(r'^\".*\"|“.*”\$').hasMatch(linha.trim());
-                    final style = TextStyle(
-                      fontStyle: isThought ? FontStyle.italic : FontStyle.normal,
-                      color: isSpeech
-                          ? Colors.purple[300]
-                          : Colors.white.withOpacity(isThought ? 0.85 : 1),
+                    final trimmed = linha.trim();
+                    final isThought = trimmed.startsWith("*") && trimmed.endsWith("*");
+                    final isSpeech = trimmed.startsWith('"') && trimmed.endsWith('"');
+                    return TextSpan(
+                      text: linha + '\n',
+                      style: TextStyle(
+                        fontStyle: isThought ? FontStyle.italic : FontStyle.normal,
+                        color: isSpeech
+                            ? Colors.purple[300]
+                            : Colors.white.withOpacity(isThought ? 0.85 : 1),
+                      ),
                     );
-                    return TextSpan(text: linha + '\n', style: style);
                   }).toList(),
                 ),
               ),
