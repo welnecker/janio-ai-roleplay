@@ -2,16 +2,15 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // ✅ URL real do seu backend em produção
   final String baseUrl = "https://web-production-76f08.up.railway.app";
 
-  /// ✅ Envia uma mensagem para o backend e recebe a resposta da IA
-  Future<Map<String, dynamic>> sendMessage(
-    String mensagem,
-    int score,
-    String modo, {
+  /// Envia uma mensagem do usuário com nota, modo e controle de primeira interação
+  Future<Map<String, dynamic>> sendMessage({
+    required String mensagem,
+    required int score,
+    required String modo,
     required String personagem,
-    required bool primeiraInteracao,
+    bool primeiraInteracao = false,
   }) async {
     final url = Uri.parse("$baseUrl/chat/");
     try {
@@ -28,7 +27,8 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(utf8.decode(response.bodyBytes)); // ✅ Suporte a acentos
+        // decodifica acentuação corretamente
+        return jsonDecode(utf8.decode(response.bodyBytes));
       } else {
         print("❌ Erro no envio da mensagem: ${response.statusCode}");
         print("Body: ${response.body}");
@@ -40,7 +40,7 @@ class ApiService {
     }
   }
 
-  /// ✅ Recupera sinopse de interações anteriores com o personagem
+  /// Busca o resumo introdutório das últimas interações com o personagem
   Future<Map<String, dynamic>> getIntro({
     required String nome,
     required String personagem,
