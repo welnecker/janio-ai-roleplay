@@ -17,6 +17,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<Map<String, String>> messages = [];
   bool loading = false;
   String introResumo = "";
+  bool primeiraInteracao = true; // ✅ Adicionado aqui
 
   @override
   void initState() {
