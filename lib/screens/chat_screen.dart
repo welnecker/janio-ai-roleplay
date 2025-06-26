@@ -17,7 +17,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<Map<String, String>> messages = [];
   bool loading = false;
   String introResumo = "";
-  bool primeiraInteracao = true; // ✅ Adicionado aqui
+  bool primeiraInteracao = true; // ✅ controla se deve exibir introdução
 
   @override
   void initState() {
@@ -44,43 +44,43 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> enviarMensagem() async {
-  final mensagem = _controller.text.trim();
-  if (mensagem.isEmpty) return;
+    final mensagem = _controller.text.trim();
+    if (mensagem.isEmpty) return;
 
-  setState(() {
-    loading = true;
-    messages.add({"role": "user", "content": mensagem});
-    _controller.clear();
-  });
-
-  final response = await apiService.sendMessage(
-    mensagem: mensagem,
-    score: 5,
-    modo: "romântico",
-    personagem: widget.character["nome"],
-    primeiraInteracao: primeiraInteracao, // ✅ envia se for a primeira
-  );
-
-  if (primeiraInteracao && response["introducao"] != null) {
-    // Adiciona a introdução como primeira resposta
     setState(() {
-      messages.add({"role": "assistant", "content": response["introducao"]});
+      loading = true;
+      messages.add({"role": "user", "content": mensagem});
+      _controller.clear();
     });
+
+    final response = await apiService.sendMessage(
+      mensagem: mensagem,
+      score: 5,
+      modo: "romântico",
+      personagem: widget.character["nome"],
+      primeiraInteracao: primeiraInteracao, // ✅ envia se for a primeira
+    );
+
+    if (primeiraInteracao && response["introducao"] != null) {
+      // Adiciona a introdução como primeira resposta
+      setState(() {
+        messages.add({"role": "assistant", "content": response["introducao"]});
+      });
+    }
+
+    setState(() {
+      messages.add({"role": "assistant", "content": response["response"]});
+      loading = false;
+      primeiraInteracao = false; // ✅ desativa para próximas mensagens
+    });
+
+    await Future.delayed(const Duration(milliseconds: 100));
+    _scrollController.animateTo(
+      _scrollController.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
   }
-
-  setState(() {
-    messages.add({"role": "assistant", "content": response["response"]});
-    loading = false;
-    primeiraInteracao = false; // ✅ nunca mais será considerada "primeira"
-  });
-
-  await Future.delayed(const Duration(milliseconds: 100));
-  _scrollController.animateTo(
-    _scrollController.position.maxScrollExtent,
-    duration: const Duration(milliseconds: 300),
-    curve: Curves.easeOut,
-  );
-}
 
   List<TextSpan> _formatarResumo(String texto) {
     return texto.split('\n').map((linha) {
@@ -124,7 +124,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 final msg = messages[index];
                 final isUser = msg["role"] == "user";
 
-                bool isResumo = msg["role"] == "assistant" && index == 0 && introResumo.isNotEmpty;
+                bool isResumo = msg["role"] == "assistant" &&
+                    index == 0 &&
+                    introResumo.isNotEmpty;
                 if (isResumo) {
                   return Container(
                     width: double.infinity,
