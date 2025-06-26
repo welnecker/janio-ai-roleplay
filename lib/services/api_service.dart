@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  final String baseUrl = "https://web-production-xxxxx.up.railway.app"; // Substitua pela sua URL real
+  // ✅ URL real da sua API em produção
+  final String baseUrl = "https://web-production-76f08.up.railway.app";
 
-  /// Envia uma mensagem do usuário com nota, modo e controle de primeira interação
+  /// ✅ Envia uma mensagem para o backend e recebe resposta da IA
   Future<Map<String, dynamic>> sendMessage({
     required String mensagem,
     required int score,
@@ -13,26 +14,33 @@ class ApiService {
     bool primeiraInteracao = false,
   }) async {
     final url = Uri.parse("$baseUrl/chat/");
-    final response = await http.post(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "user_input": mensagem,
-        "score": score,
-        "modo": modo,
-        "personagem": personagem,
-        "primeira_interacao": primeiraInteracao,
-      }),
-    );
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "user_input": mensagem,
+          "score": score,
+          "modo": modo,
+          "personagem": personagem,
+          "primeira_interacao": primeiraInteracao,
+        }),
+      );
 
-    if (response.statusCode == 200) {
-      return jsonDecode(utf8.decode(response.bodyBytes)); // ✅ decodifica acentuação
-    } else {
-      throw Exception("Erro ao enviar mensagem: ${response.body}");
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      } else {
+        print("❌ Erro no envio da mensagem: ${response.statusCode}");
+        print(response.body);
+        return {"response": "Erro ao enviar mensagem para o servidor."};
+      }
+    } catch (e) {
+      print("❌ Erro de conexão em sendMessage: $e");
+      return {"response": "Falha na conexão com o servidor."};
     }
   }
 
-  /// Busca o resumo introdutório das últimas interações com o personagem
+  /// ✅ Recupera a sinopse (resumo) de interações anteriores
   Future<Map<String, dynamic>> getIntro({
     required String nome,
     required String personagem,
@@ -41,13 +49,13 @@ class ApiService {
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
-        return jsonDecode(utf8.decode(response.bodyBytes)); // ✅ trata UTF-8 corretamente
+        return jsonDecode(utf8.decode(response.bodyBytes));
       } else {
-        print("Erro ao buscar intro: ${response.statusCode}");
+        print("❌ Erro ao buscar intro: ${response.statusCode}");
         return {"resumo": ""};
       }
     } catch (e) {
-      print("Erro de conexão em getIntro: $e");
+      print("❌ Erro de conexão em getIntro: $e");
       return {"resumo": ""};
     }
   }
