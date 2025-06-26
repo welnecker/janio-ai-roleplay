@@ -1,7 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'chat_screen.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert'; // ✅ necessário para utf8.decode
+import 'chat_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,7 +11,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<Map<String, String>> personagens = [];
+  List<Map<String, dynamic>> personagens = [];
   bool carregando = true;
 
   @override
@@ -25,14 +25,10 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
-        final decoded = utf8.decode(response.bodyBytes); // ✅ Decodificação correta
+        final decoded = utf8.decode(response.bodyBytes);
         final List dados = jsonDecode(decoded);
-        final convertidos = dados.map<Map<String, String>>(
-          (e) => e.map((k, v) => MapEntry(k.toString(), v.toString())),
-        ).toList();
-
         setState(() {
-          personagens = convertidos;
+          personagens = dados.cast<Map<String, dynamic>>();
           carregando = false;
         });
       } else {
@@ -71,17 +67,17 @@ class _HomeScreenState extends State<HomeScreen> {
             margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: ListTile(
               leading: CircleAvatar(
-                backgroundImage: NetworkImage(personagem['foto'] ?? ""),
+                backgroundImage: NetworkImage(personagem['foto']),
               ),
-              title: Text(personagem['nome'] ?? ""),
-              subtitle: Text(personagem['descricao'] ?? ""),
+              title: Text(personagem['nome']),
+              subtitle: Text(personagem['descricao']),
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => ChatScreen(character: {
-                      "nome": personagem['nome'] ?? "",
-                      "descricao": personagem['descricao'] ?? "",
+                      "nome": personagem['nome'],
+                      "descricao": personagem['descricao'],
                     }),
                   ),
                 );
