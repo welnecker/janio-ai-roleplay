@@ -57,24 +57,20 @@ class _ChatScreenState extends State<ChatScreen> {
     score: 5,
     modo: "romântico",
     personagem: widget.character["nome"],
-    primeiraInteracao: primeiraInteracao, // NOVO
+    primeiraInteracao: primeiraInteracao, // ✅ envia se for a primeira
   );
 
-  setState(() {
-    if (primeiraInteracao && response["introducao"] != null) {
-      messages.add({
-        "role": "assistant",
-        "content": response["introducao"]
-      });
-    }
-
-    messages.add({
-      "role": "assistant",
-      "content": response["response"]
+  if (primeiraInteracao && response["introducao"] != null) {
+    // Adiciona a introdução como primeira resposta
+    setState(() {
+      messages.add({"role": "assistant", "content": response["introducao"]});
     });
+  }
 
+  setState(() {
+    messages.add({"role": "assistant", "content": response["response"]});
     loading = false;
-    primeiraInteracao = false;
+    primeiraInteracao = false; // ✅ nunca mais será considerada "primeira"
   });
 
   await Future.delayed(const Duration(milliseconds: 100));
