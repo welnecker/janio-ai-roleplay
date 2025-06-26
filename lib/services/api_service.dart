@@ -2,35 +2,52 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  final String baseUrl = "https://web-production-76f08.up.railway.app";
+  final String baseUrl = "https://web-production-xxxxx.up.railway.app"; // substitua pela sua URL real
 
-  /// Envia uma mensagem ao backend e recebe a resposta da IA
+  /// Envia uma mensagem do usuário com nota, modo e controle de primeira interação
   Future<Map<String, dynamic>> sendMessage({
-  required String mensagem,
-  required int score,
-  required String modo,
-  required String personagem,
-  bool primeiraInteracao = false,
-}) async {
-  final url = Uri.parse("$baseUrl/chat/");
-  final response = await http.post(
-    url,
-    headers: {"Content-Type": "application/json"},
-    body: jsonEncode({
-      "user_input": mensagem,
-      "score": score,
-      "modo": modo,
-      "personagem": personagem,
-      "primeira_interacao": primeiraInteracao,
-    }),
-  );
+    required String mensagem,
+    required int score,
+    required String modo,
+    required String personagem,
+    bool primeiraInteracao = false,
+  }) async {
+    final url = Uri.parse("$baseUrl/chat/");
+    final response = await http.post(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "user_input": mensagem,
+        "score": score,
+        "modo": modo,
+        "personagem": personagem,
+        "primeira_interacao": primeiraInteracao, // ✅ enviado corretamente
+      }),
+    );
 
-  if (response.statusCode == 200) {
-    return jsonDecode(response.body);
-  } else {
-    throw Exception("Erro ao enviar mensagem: ${response.body}");
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("Erro ao enviar mensagem: ${response.body}");
+    }
+  }
+
+  /// Pega introdução ou sinopse para o personagem
+  Future<Map<String, dynamic>> getIntro({
+    required String nome,
+    required String personagem,
+  }) async {
+    final url = Uri.parse("$baseUrl/intro/?nome=$nome&personagem=$personagem");
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("Erro ao obter introdução: ${response.body}");
+    }
   }
 }
+
 
 
   /// Busca o resumo introdutório das últimas interações com o personagem
