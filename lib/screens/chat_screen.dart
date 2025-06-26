@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 
 class ChatScreen extends StatefulWidget {
-  final Map<String, dynamic> character;
+  final Map<String, String> character;
 
   const ChatScreen({super.key, required this.character});
 
@@ -15,120 +15,119 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<Map<String, String>> messages = [];
+  bool isLoading = false;
 
-  bool loading = false;
-  bool primeiraInteracao = true;
-  String introResumo = "";
+  int _score = 5; // nota inicial
+  bool _primeiraInteracao = true;
 
   @override
   void initState() {
     super.initState();
-    carregarIntro();
+    _carregarIntro();
   }
 
-  Future<void> carregarIntro() async {
+  Future<void> _carregarIntro() async {
     try {
-      final result = await apiService.getIntro(
-        nome: "Janio",
-        personagem: widget.character["nome"],
+      final intro = await apiService.getIntro(
+        nome: "Donisete",
+        personagem: widget.character['nome'] ?? "",
       );
 
-      final resumo = result["resumo"]?.toString().trim() ?? "";
-      if (resumo.isNotEmpty) {
-        setState(() {
-          introResumo = resumo;
-          messages.insert(0, {
-            "role": "assistant",
-            "content": introResumo,
-          });
-        });
-      }
-    } catch (e) {
-      print("Erro ao carregar resumo: $e");
-    }
-  }
-
-  Future<void> enviarMensagem() async {
-    final mensagem = _controller.text.trim();
-    if (mensagem.isEmpty || loading) return;
-
-    setState(() {
-      loading = true;
-      messages.add({"role": "user", "content": mensagem});
-      _controller.clear();
-    });
-
-    try {
-      final response = await apiService.sendMessage(
-        mensagem: mensagem,
-        score: 5,
-        modo: "romântico",
-        personagem: widget.character["nome"],
-        primeiraInteracao: primeiraInteracao,
-      );
-
-      if (primeiraInteracao && response["introducao"] != null) {
+      if (intro['resumo'] != null && intro['resumo'].toString().trim().isNotEmpty) {
+        // Sinopse (há histórico)
         setState(() {
           messages.add({
-            "role": "assistant",
-            "content": response["introducao"].toString().trim()
+            "role": "system",
+            "content": intro['resumo'],
           });
+          _primeiraInteracao = false;
         });
+      } else {
+        // Sem histórico: mostrar introdução
+        final introducao = widget.character['introducao'] ?? "";
+        if (introducao.trim().isNotEmpty) {
+          setState(() {
+            messages.add({
+              "role": "system",
+              "content": introducao,
+            });
+            _primeiraInteracao = true;
+          });
+        }
       }
-
-      setState(() {
-        messages.add({
-          "role": "assistant",
-          "content": response["response"].toString().trim()
-        });
-        loading = false;
-        primeiraInteracao = false;
-      });
-
-      await Future.delayed(const Duration(milliseconds: 100));
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
     } catch (e) {
-      print("Erro ao enviar mensagem: $e");
-      setState(() => loading = false);
+      print("Erro ao carregar introdução/sinopse: $e");
     }
   }
 
-  List<TextSpan> _formatarResumo(String texto) {
-    return texto.split('\n').map((linha) {
-      final trimmed = linha.trim();
-      final isThought = trimmed.startsWith("*") && trimmed.endsWith("*");
-      final isSpeech = trimmed.startsWith('"') && trimmed.endsWith('"');
-      return TextSpan(
-        text: linha + '\n',
-        style: TextStyle(
-          fontStyle: isThought ? FontStyle.italic : FontStyle.normal,
-          color: isSpeech
-              ? Colors.purple[300]
-              : Colors.white.withOpacity(isThought ? 0.85 : 1),
-        ),
+  void _enviarMensagem() async {
+    final texto = _controller.text.trim();
+    if (texto.isEmpty) return;
+
+    setState(() {
+      messages.add({"role": "user", "content": texto});
+      isLoading = true;
+    });
+
+    _controller.clear();
+    _scrollController.animateTo(
+      _scrollController.position.maxScrollExtent + 100,
+      duration: Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+
+    try {
+      final resposta = await apiService.sendMessage(
+        mensagem: texto,
+        score: _score,
+        modo: "romântico",
+        personagem: widget.character['nome'] ?? "",
+        primeiraInteracao: _primeiraInteracao,
       );
-    }).toList();
+
+      setState(() {
+        if (resposta['introducao'] != null && resposta['introducao'].toString().isNotEmpty && _primeiraInteracao) {
+          messages.add({
+            "role": "system",
+            "content": resposta['introducao'],
+          });
+        }
+
+        messages.add({
+          "role": "assistant",
+          "content": resposta['response'] ?? "Sem resposta",
+        });
+        isLoading = false;
+        _primeiraInteracao = false;
+      });
+    } catch (e) {
+      print("Erro ao enviar mensagem: $e");
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Widget _buildMensagem(Map<String, String> msg) {
+    final isUser = msg['role'] == 'user';
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isUser ? Colors.blue[100] : Colors.grey[300],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(msg['content'] ?? ''),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.character["nome"]),
-            Text(
-              widget.character["descricao"],
-              style: const TextStyle(fontSize: 12, color: Colors.white70),
-            ),
-          ],
-        ),
-      ),
+      appBar: AppBar(title: Text(widget.character['nome'] ?? "Personagem")),
       body: Column(
         children: [
           Expanded(
@@ -136,62 +135,32 @@ class _ChatScreenState extends State<ChatScreen> {
               controller: _scrollController,
               itemCount: messages.length,
               itemBuilder: (context, index) {
-                final msg = messages[index];
-                final isUser = msg["role"] == "user";
-
-                if (index == 0 && msg["content"] == introResumo) {
-                  return Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.all(12),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.6),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: RichText(
-                      text: TextSpan(
-                        style: const TextStyle(fontSize: 14),
-                        children: _formatarResumo(introResumo),
-                      ),
-                    ),
-                  );
-                }
-
-                return Align(
-                  alignment:
-                      isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(
-                        vertical: 4, horizontal: 8),
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color:
-                          isUser ? Colors.blue[100] : Colors.grey[200],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(msg["content"] ?? ""),
-                  ),
-                );
+                return _buildMensagem(messages[index]);
               },
             ),
           ),
-          if (loading) const LinearProgressIndicator(),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  decoration: const InputDecoration(
-                    hintText: "Digite sua mensagem...",
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12),
+          if (isLoading)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: CircularProgressIndicator(),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: InputDecoration(hintText: "Digite sua mensagem..."),
+                    onSubmitted: (_) => _enviarMensagem(),
                   ),
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.send),
-                onPressed: loading ? null : enviarMensagem,
-              ),
-            ],
+                IconButton(
+                  icon: Icon(Icons.send),
+                  onPressed: _enviarMensagem,
+                ),
+              ],
+            ),
           ),
         ],
       ),
