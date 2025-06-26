@@ -1,20 +1,18 @@
-// lib/screens/character_selection_screen.dart
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
 import 'chat_screen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert'; // ✅ necessário para utf8.decode
 
-class CharacterSelectionScreen extends StatefulWidget {
-  const CharacterSelectionScreen({super.key});
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
 
   @override
-  State<CharacterSelectionScreen> createState() => _CharacterSelectionScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
-  final ApiService apiService = ApiService();
+class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, String>> personagens = [];
-  bool isLoading = true;
-  String errorMessage = "";
+  bool carregando = true;
 
   @override
   void initState() {
@@ -23,62 +21,75 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
   }
 
   Future<void> carregarPersonagens() async {
+    final url = Uri.parse("https://web-production-76f08.up.railway.app/personagens/");
     try {
-      final url = Uri.parse("${apiService.baseUrl}/personagens/");
       final response = await http.get(url);
-
       if (response.statusCode == 200) {
-        final data = List<Map<String, dynamic>>.from(
-            jsonDecode(utf8.decode(response.bodyBytes)));
+        final decoded = utf8.decode(response.bodyBytes); // ✅ Decodificação correta
+        final List dados = jsonDecode(decoded);
+        final convertidos = dados.map<Map<String, String>>(
+          (e) => e.map((k, v) => MapEntry(k.toString(), v.toString())),
+        ).toList();
 
         setState(() {
-          personagens = data.map((p) => {
-                "nome": p["nome"] ?? "",
-                "descricao": p["descricao"] ?? "",
-                "foto": p["foto"] ?? "",
-              }).toList();
-          isLoading = false;
+          personagens = convertidos;
+          carregando = false;
         });
       } else {
-        throw Exception("Erro ao carregar personagens: ${response.statusCode}");
+        setState(() => carregando = false);
+        print("Erro: status ${response.statusCode}");
       }
     } catch (e) {
-      setState(() {
-        isLoading = false;
-        errorMessage = e.toString();
-      });
+      print("Erro ao carregar personagens: $e");
+      setState(() => carregando = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (carregando) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (personagens.isEmpty) {
+      return const Scaffold(
+        body: Center(child: Text("Nenhum personagem encontrado.")),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Escolha um personagem")),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : errorMessage.isNotEmpty
-              ? Center(child: Text(errorMessage))
-              : ListView.builder(
-                  itemCount: personagens.length,
-                  itemBuilder: (context, index) {
-                    final personagem = personagens[index];
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundImage: NetworkImage(personagem["foto"]!),
-                      ),
-                      title: Text(personagem["nome"]!),
-                      subtitle: Text(personagem["descricao"]!),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ChatScreen(character: personagem),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
+      appBar: AppBar(
+        title: const Text('Escolha seu personagem'),
+      ),
+      body: ListView.builder(
+        itemCount: personagens.length,
+        itemBuilder: (context, index) {
+          final personagem = personagens[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundImage: NetworkImage(personagem['foto'] ?? ""),
+              ),
+              title: Text(personagem['nome'] ?? ""),
+              subtitle: Text(personagem['descricao'] ?? ""),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ChatScreen(character: {
+                      "nome": personagem['nome'] ?? "",
+                      "descricao": personagem['descricao'] ?? "",
+                    }),
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
     );
   }
 }
