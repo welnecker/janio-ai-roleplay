@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../services/api_service.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -16,103 +14,89 @@ class _ChatScreenState extends State<ChatScreen> {
   final ApiService apiService = ApiService();
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-
   final List<Map<String, String>> messages = [];
+
   bool isLoading = false;
+  bool introShown = false;
+
   int _score = 5;
-  String _modo = "romântico";
-  bool _introCarregada = false;
+  String _modoSelecionado = "romântico";
 
   @override
   void initState() {
     super.initState();
-    _carregarIntro();
+    _loadIntro();
   }
 
-  Future<void> _carregarIntro() async {
+  void _loadIntro() async {
+    setState(() => isLoading = true);
     try {
       final intro = await apiService.sendMessage(
-        mensagem: "",
+        mensagem: "[INICIO]",
         score: _score,
-        modo: _modo,
+        modo: _modoSelecionado,
         personagem: widget.character['nome'] ?? "",
         primeiraInteracao: true,
       );
 
       if (intro['introducao'] != null && intro['introducao'].toString().isNotEmpty) {
-        setState(() {
-          messages.add({"role": "assistant", "content": intro['introducao']});
-          if (intro['sinopse'] != null && intro['sinopse'].toString().isNotEmpty) {
-            messages.insert(0, {"role": "system", "content": intro['sinopse']});
-          }
-          _introCarregada = true;
-        });
+        messages.add({"role": "assistant", "content": intro['introducao']});
       }
+
+      if (intro['sinopse'] != null && intro['sinopse'].toString().isNotEmpty) {
+        messages.insert(0, {"role": "system", "content": intro['sinopse']});
+      }
+
     } catch (e) {
-      print("Erro ao carregar introdução: $e");
+      debugPrint("Erro ao carregar introdução: $e");
+    } finally {
+      setState(() {
+        isLoading = false;
+        introShown = true;
+      });
     }
   }
 
-  Future<void> _enviarMensagem() async {
-    if (_controller.text.trim().isEmpty) return;
+  void _sendMessage(String userMessage) async {
+    if (userMessage.trim().isEmpty) return;
+
     setState(() {
+      messages.add({"role": "user", "content": userMessage});
       isLoading = true;
-      messages.add({"role": "user", "content": _controller.text.trim()});
+      _controller.clear();
     });
-    final userInput = _controller.text.trim();
-    _controller.clear();
 
     try {
       final resposta = await apiService.sendMessage(
-        mensagem: userInput,
+        mensagem: userMessage,
         score: _score,
-        modo: _modo,
+        modo: _modoSelecionado,
         personagem: widget.character['nome'] ?? "",
       );
-      setState(() {
-        messages.add({"role": "assistant", "content": resposta['response']});
-        isLoading = false;
-      });
+
+      if (resposta['response'] != null) {
+        setState(() {
+          messages.add({"role": "assistant", "content": resposta['response']});
+        });
+      }
+    } catch (e) {
+      debugPrint("Erro ao enviar mensagem: $e");
+    } finally {
+      setState(() => isLoading = false);
       _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent + 150,
+        _scrollController.position.maxScrollExtent + 100,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
-    } catch (e) {
-      setState(() => isLoading = false);
-      print("Erro ao enviar mensagem: $e");
     }
-  }
-
-  Widget _buildMessage(Map<String, String> msg) {
-    final isUser = msg['role'] == 'user';
-    final isSystem = msg['role'] == 'system';
-    return Align(
-      alignment: isUser
-          ? Alignment.centerRight
-          : isSystem
-              ? Alignment.center
-              : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isUser
-              ? Colors.blue[100]
-              : isSystem
-                  ? Colors.grey[300]
-                  : Colors.pink[100],
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(msg['content'] ?? ""),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.character['nome'] ?? "Chat")),
+      appBar: AppBar(
+        title: Text(widget.character['nome'] ?? "Personagem"),
+      ),
       body: Column(
         children: [
           Expanded(
@@ -120,7 +104,22 @@ class _ChatScreenState extends State<ChatScreen> {
               controller: _scrollController,
               itemCount: messages.length,
               itemBuilder: (context, index) {
-                return _buildMessage(messages[index]);
+                final msg = messages[index];
+                final isUser = msg['role'] == 'user';
+                return ListTile(
+                  title: Align(
+                    alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isUser ? Colors.blue[100] : Colors.grey[300],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(msg['content'] ?? ""),
+                    ),
+                  ),
+                );
               },
             ),
           ),
@@ -130,25 +129,23 @@ class _ChatScreenState extends State<ChatScreen> {
               child: CircularProgressIndicator(),
             ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+            padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _controller,
-                    decoration: const InputDecoration(
-                      hintText: "Digite sua mensagem...",
-                    ),
-                    onSubmitted: (_) => _enviarMensagem(),
+                    decoration: const InputDecoration(hintText: "Digite sua mensagem..."),
+                    onSubmitted: _sendMessage,
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.send),
-                  onPressed: isLoading ? null : _enviarMensagem,
+                  onPressed: () => _sendMessage(_controller.text),
                 )
               ],
             ),
-          )
+          ),
         ],
       ),
     );
