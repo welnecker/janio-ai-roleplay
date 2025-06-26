@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+
 import '../services/api_service.dart';
 
 class ChatScreen extends StatefulWidget {
-  final Map<String, String> character;
+  final Map<String, dynamic> character;
 
   const ChatScreen({super.key, required this.character});
 
@@ -13,131 +14,109 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  final ApiService apiService = ApiService();
   final TextEditingController _controller = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
+  final ApiService apiService = ApiService();
   final List<Map<String, String>> messages = [];
-
-  bool isLoading = false;
-  bool introShown = false;
-  int _score = 5; // nota inicial
+  bool carregando = false;
+  String introResumo = "";
 
   @override
   void initState() {
     super.initState();
-    _loadIntro();
+    carregarIntro(); // ✅ Carrega apenas o resumo da introdução
   }
 
-  void _loadIntro() async {
-    try {
-      final resposta = await apiService.sendMessage(
-        mensagem: "Oi",
-        score: _score,
-        modo: "romântico",
-        personagem: widget.character['nome']!,
-        primeiraInteracao: true,
-      );
-
-      setState(() {
-        messages.add({
-          "role": "assistant",
-          "content": resposta["response"] ?? "Bem-vindo.",
+  Future<void> carregarIntro() async {
+    final result = await apiService.getIntro(
+      nome: "Janio",
+      personagem: widget.character["nome"],
+    );
+    setState(() {
+      introResumo = result["resumo"] ?? "";
+      if (introResumo.isNotEmpty) {
+        messages.insert(0, {
+          "role": "system",
+          "content": introResumo,
         });
-        introShown = true;
-      });
-    } catch (e) {
-      debugPrint("Erro ao carregar introdução: $e");
-    }
+      }
+    });
   }
 
-  void _sendMessage(String texto) async {
-    if (texto.trim().isEmpty) return;
+  Future<void> enviarMensagem() async {
+    final mensagem = _controller.text.trim();
+    if (mensagem.isEmpty) return;
 
     setState(() {
-      messages.add({"role": "user", "content": texto});
-      isLoading = true;
+      messages.add({"role": "user", "content": mensagem});
+      carregando = true;
     });
+
     _controller.clear();
 
-    try {
-      final resposta = await apiService.sendMessage(
-        mensagem: texto,
-        score: _score,
-        modo: "romântico",
-        personagem: widget.character['nome']!,
-        primeiraInteracao: false,
-      );
+    final response = await apiService.sendMessage(
+      mensagem: mensagem,
+      score: 5,
+      modo: "romântico",
+      personagem: widget.character["nome"],
+    );
 
-      setState(() {
-        messages.add({"role": "assistant", "content": resposta["response"]});
-        isLoading = false;
-      });
-
-      await Future.delayed(const Duration(milliseconds: 100));
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent + 100,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    } catch (e) {
-      debugPrint("Erro ao enviar mensagem: $e");
-      setState(() => isLoading = false);
-    }
+    setState(() {
+      messages.add({"role": "assistant", "content": response["response"] ?? ""});
+      carregando = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.character['nome'] ?? 'Chat'),
+        title: Text(widget.character["nome"]),
       ),
       body: Column(
         children: [
           Expanded(
             child: ListView.builder(
-              controller: _scrollController,
+              padding: const EdgeInsets.all(12),
               itemCount: messages.length,
               itemBuilder: (context, index) {
                 final msg = messages[index];
-                final isUser = msg['role'] == 'user';
-
-                return Container(
+                final isUser = msg["role"] == "user";
+                return Align(
                   alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
                     padding: const EdgeInsets.all(12),
-                    constraints: const BoxConstraints(maxWidth: 280),
                     decoration: BoxDecoration(
-                      color: isUser ? Colors.blue[100] : Colors.grey[300],
+                      color: isUser ? Colors.purple[100] : Colors.grey[300],
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(msg['content'] ?? ''),
+                    child: Text(msg["content"] ?? ""),
                   ),
                 );
               },
             ),
           ),
-          if (isLoading)
+          if (carregando)
             const Padding(
               padding: EdgeInsets.all(8),
               child: CircularProgressIndicator(),
             ),
           Padding(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _controller,
-                    onSubmitted: _sendMessage,
                     decoration: const InputDecoration(
-                      hintText: 'Digite sua mensagem...',
+                      hintText: "Digite sua mensagem...",
                     ),
+                    onSubmitted: (_) => enviarMensagem(),
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.send),
-                  onPressed: () => _sendMessage(_controller.text),
+                  onPressed: enviarMensagem,
                 ),
               ],
             ),
