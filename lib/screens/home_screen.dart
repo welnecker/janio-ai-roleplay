@@ -1,18 +1,20 @@
+// lib/screens/character_selection_screen.dart
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 import 'chat_screen.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class CharacterSelectionScreen extends StatefulWidget {
+  const CharacterSelectionScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<CharacterSelectionScreen> createState() => _CharacterSelectionScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  List<Map<String, dynamic>> personagens = [];
-  bool carregando = true;
+class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
+  final ApiService apiService = ApiService();
+  List<Map<String, String>> personagens = [];
+  bool isLoading = true;
+  String errorMessage = "";
 
   @override
   void initState() {
@@ -20,73 +22,63 @@ class _HomeScreenState extends State<HomeScreen> {
     carregarPersonagens();
   }
 
-    Future<void> carregarPersonagens() async {
-    final url = Uri.parse("https://web-production-76f08.up.railway.app/personagens/");
+  Future<void> carregarPersonagens() async {
     try {
+      final url = Uri.parse("${apiService.baseUrl}/personagens/");
       final response = await http.get(url);
+
       if (response.statusCode == 200) {
-        final decoded = utf8.decode(response.bodyBytes); // <-- CORREÇÃO
-        final List dados = jsonDecode(decoded);           // <-- usa UTF-8 corretamente
+        final data = List<Map<String, dynamic>>.from(
+            jsonDecode(utf8.decode(response.bodyBytes)));
+
         setState(() {
-          personagens = dados.cast<Map<String, dynamic>>();
-          carregando = false;
+          personagens = data.map((p) => {
+                "nome": p["nome"] ?? "",
+                "descricao": p["descricao"] ?? "",
+                "foto": p["foto"] ?? "",
+              }).toList();
+          isLoading = false;
         });
       } else {
-        setState(() => carregando = false);
-        print("Erro: status ${response.statusCode}");
+        throw Exception("Erro ao carregar personagens: ${response.statusCode}");
       }
     } catch (e) {
-      print("Erro ao carregar personagens: $e");
-      setState(() => carregando = false);
+      setState(() {
+        isLoading = false;
+        errorMessage = e.toString();
+      });
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
-    if (carregando) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    if (personagens.isEmpty) {
-      return const Scaffold(
-        body: Center(child: Text("Nenhum personagem encontrado.")),
-      );
-    }
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Escolha seu personagem'),
-      ),
-      body: ListView.builder(
-        itemCount: personagens.length,
-        itemBuilder: (context, index) {
-          final personagem = personagens[index];
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundImage: NetworkImage(personagem['foto']),
-              ),
-              title: Text(personagem['nome']),
-              subtitle: Text(personagem['descricao']),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ChatScreen(character: {
-                      "nome": personagem['nome'],
-                      "descricao": personagem['descricao'],
-                    }),
-                  ),
-                );
-              },
-            ),
-          );
-        },
-      ),
+      appBar: AppBar(title: const Text("Escolha um personagem")),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : errorMessage.isNotEmpty
+              ? Center(child: Text(errorMessage))
+              : ListView.builder(
+                  itemCount: personagens.length,
+                  itemBuilder: (context, index) {
+                    final personagem = personagens[index];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage: NetworkImage(personagem["foto"]!),
+                      ),
+                      title: Text(personagem["nome"]!),
+                      subtitle: Text(personagem["descricao"]!),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChatScreen(character: personagem),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
     );
   }
 }
