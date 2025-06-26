@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  final String baseUrl = "https://web-production-xxxxx.up.railway.app"; // substitua pela sua URL real
+  final String baseUrl = "https://web-production-xxxxx.up.railway.app"; // Substitua pela sua URL real
 
   /// Envia uma mensagem do usuário com nota, modo e controle de primeira interação
   Future<Map<String, dynamic>> sendMessage({
@@ -21,34 +21,16 @@ class ApiService {
         "score": score,
         "modo": modo,
         "personagem": personagem,
-        "primeira_interacao": primeiraInteracao, // ✅ enviado corretamente
+        "primeira_interacao": primeiraInteracao,
       }),
     );
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      return jsonDecode(utf8.decode(response.bodyBytes)); // ✅ decodifica acentuação
     } else {
       throw Exception("Erro ao enviar mensagem: ${response.body}");
     }
   }
-
-  /// Pega introdução ou sinopse para o personagem
-  Future<Map<String, dynamic>> getIntro({
-    required String nome,
-    required String personagem,
-  }) async {
-    final url = Uri.parse("$baseUrl/intro/?nome=$nome&personagem=$personagem");
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception("Erro ao obter introdução: ${response.body}");
-    }
-  }
-}
-
-
 
   /// Busca o resumo introdutório das últimas interações com o personagem
   Future<Map<String, dynamic>> getIntro({
@@ -59,7 +41,7 @@ class ApiService {
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
-        return jsonDecode(utf8.decode(response.bodyBytes));
+        return jsonDecode(utf8.decode(response.bodyBytes)); // ✅ trata UTF-8 corretamente
       } else {
         print("Erro ao buscar intro: ${response.statusCode}");
         return {"resumo": ""};
