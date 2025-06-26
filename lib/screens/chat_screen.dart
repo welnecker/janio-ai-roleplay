@@ -43,34 +43,47 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> enviarMensagem() async {
-    final mensagem = _controller.text.trim();
-    if (mensagem.isEmpty) return;
+  final mensagem = _controller.text.trim();
+  if (mensagem.isEmpty) return;
 
-    setState(() {
-      loading = true;
-      messages.add({"role": "user", "content": mensagem});
-      _controller.clear();
+  setState(() {
+    loading = true;
+    messages.add({"role": "user", "content": mensagem});
+    _controller.clear();
+  });
+
+  final response = await apiService.sendMessage(
+    mensagem: mensagem,
+    score: 5,
+    modo: "romântico",
+    personagem: widget.character["nome"],
+    primeiraInteracao: primeiraInteracao, // NOVO
+  );
+
+  setState(() {
+    if (primeiraInteracao && response["introducao"] != null) {
+      messages.add({
+        "role": "assistant",
+        "content": response["introducao"]
+      });
+    }
+
+    messages.add({
+      "role": "assistant",
+      "content": response["response"]
     });
 
-    final response = await apiService.sendMessage(
-      mensagem: mensagem,
-      score: 5,
-      modo: "romântico",
-      personagem: widget.character["nome"],
-    );
+    loading = false;
+    primeiraInteracao = false;
+  });
 
-    setState(() {
-      messages.add({"role": "assistant", "content": response["response"]});
-      loading = false;
-    });
-
-    await Future.delayed(const Duration(milliseconds: 100));
-    _scrollController.animateTo(
-      _scrollController.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-    );
-  }
+  await Future.delayed(const Duration(milliseconds: 100));
+  _scrollController.animateTo(
+    _scrollController.position.maxScrollExtent,
+    duration: const Duration(milliseconds: 300),
+    curve: Curves.easeOut,
+  );
+}
 
   List<TextSpan> _formatarResumo(String texto) {
     return texto.split('\n').map((linha) {
