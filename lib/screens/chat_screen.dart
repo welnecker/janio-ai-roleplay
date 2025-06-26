@@ -17,8 +17,8 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<Map<String, String>> messages = [];
 
   bool loading = false;
+  bool primeiraInteracao = true;
   String introResumo = "";
-  bool primeiraInteracao = true; // ✅ controla se deve exibir introdução
 
   @override
   void initState() {
@@ -26,23 +26,21 @@ class _ChatScreenState extends State<ChatScreen> {
     carregarIntro();
   }
 
-  /// Carrega o resumo das últimas interações (sinopse)
   Future<void> carregarIntro() async {
     try {
       final result = await apiService.getIntro(
         nome: "Janio",
         personagem: widget.character["nome"],
       );
-      print("Resumo recebido: ${result['resumo']}");
 
-      final resumo = result["resumo"]?.trim() ?? "";
-
+      final resumo = result["resumo"]?.toString().trim() ?? "";
       if (resumo.isNotEmpty) {
         setState(() {
           introResumo = resumo;
-          // ✅ sinopse adicionada como primeira mensagem
-          messages.add({"role": "assistant", "content": introResumo});
-          primeiraInteracao = false; // ✅ ignora introdução se já teve resumo
+          messages.insert(0, {
+            "role": "assistant",
+            "content": introResumo,
+          });
         });
       }
     } catch (e) {
@@ -50,10 +48,9 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  /// Envia mensagem e trata introdução
   Future<void> enviarMensagem() async {
     final mensagem = _controller.text.trim();
-    if (mensagem.isEmpty) return;
+    if (mensagem.isEmpty || loading) return;
 
     setState(() {
       loading = true;
@@ -61,39 +58,45 @@ class _ChatScreenState extends State<ChatScreen> {
       _controller.clear();
     });
 
-    final response = await apiService.sendMessage(
-      mensagem: mensagem,
-      score: 5,
-      modo: "romântico",
-      personagem: widget.character["nome"],
-      primeiraInteracao: primeiraInteracao,
-    );
+    try {
+      final response = await apiService.sendMessage(
+        mensagem: mensagem,
+        score: 5,
+        modo: "romântico",
+        personagem: widget.character["nome"],
+        primeiraInteracao: primeiraInteracao,
+      );
 
-    // ✅ Exibe introdução se for a primeira interação e NÃO houve sinopse
-    if (primeiraInteracao &&
-        introResumo.isEmpty &&
-        (response["introducao"] ?? "").toString().isNotEmpty) {
-      print("🟡 Exibindo introdução...");
+      if (primeiraInteracao && response["introducao"] != null) {
+        setState(() {
+          messages.add({
+            "role": "assistant",
+            "content": response["introducao"].toString().trim()
+          });
+        });
+      }
+
       setState(() {
-        messages.add({"role": "assistant", "content": response["introducao"]});
+        messages.add({
+          "role": "assistant",
+          "content": response["response"].toString().trim()
+        });
+        loading = false;
+        primeiraInteracao = false;
       });
+
+      await Future.delayed(const Duration(milliseconds: 100));
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    } catch (e) {
+      print("Erro ao enviar mensagem: $e");
+      setState(() => loading = false);
     }
-
-    setState(() {
-      messages.add({"role": "assistant", "content": response["response"]});
-      loading = false;
-      primeiraInteracao = false; // ✅ impede novas introduções
-    });
-
-    await Future.delayed(const Duration(milliseconds: 100));
-    _scrollController.animateTo(
-      _scrollController.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-    );
   }
 
-  /// Estilo personalizado para falas, pensamentos e narração
   List<TextSpan> _formatarResumo(String texto) {
     return texto.split('\n').map((linha) {
       final trimmed = linha.trim();
@@ -136,10 +139,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 final msg = messages[index];
                 final isUser = msg["role"] == "user";
 
-                // ✅ Exibe a sinopse como primeira mensagem se disponível
-                final isResumo = msg["content"] == introResumo && index == 0;
-
-                if (isResumo) {
+                if (index == 0 && msg["content"] == introResumo) {
                   return Container(
                     width: double.infinity,
                     margin: const EdgeInsets.all(12),
@@ -158,9 +158,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 }
 
                 return Align(
-                  alignment: isUser
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
+                  alignment:
+                      isUser ? Alignment.centerRight : Alignment.centerLeft,
                   child: Container(
                     margin: const EdgeInsets.symmetric(
                         vertical: 4, horizontal: 8),
@@ -186,7 +185,6 @@ class _ChatScreenState extends State<ChatScreen> {
                     hintText: "Digite sua mensagem...",
                     contentPadding: EdgeInsets.symmetric(horizontal: 12),
                   ),
-                  onSubmitted: (_) => enviarMensagem(),
                 ),
               ),
               IconButton(
