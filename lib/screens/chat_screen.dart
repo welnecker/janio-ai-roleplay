@@ -14,120 +14,95 @@ class _ChatScreenState extends State<ChatScreen> {
   final ApiService apiService = ApiService();
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+
   final List<Map<String, String>> messages = [];
   bool isLoading = false;
-
-  int _score = 5; // nota inicial
-  bool _primeiraInteracao = true;
+  bool introShown = false;
+  int _score = 5;
 
   @override
   void initState() {
     super.initState();
-    _carregarIntro();
+    _loadIntro(); // Carrega a introdução automaticamente
   }
 
-  Future<void> _carregarIntro() async {
+  Future<void> _loadIntro() async {
     try {
-      final intro = await apiService.getIntro(
-        nome: "Donisete",
-        personagem: widget.character['nome'] ?? "",
+      setState(() => isLoading = true);
+
+      final result = await apiService.sendMessage(
+        "",
+        _score,
+        "romântico",
+        personagem: widget.character['nome'] ?? "Jennifer",
+        primeiraInteracao: true,
       );
 
-      if (intro['resumo'] != null && intro['resumo'].toString().trim().isNotEmpty) {
-        // Sinopse (há histórico)
-        setState(() {
-          messages.add({
-            "role": "system",
-            "content": intro['resumo'],
-          });
-          _primeiraInteracao = false;
+      if (result['introducao'] != null && result['introducao']!.isNotEmpty) {
+        messages.add({
+          "role": "assistant",
+          "content": result['introducao']!,
         });
-      } else {
-        // Sem histórico: mostrar introdução
-        final introducao = widget.character['introducao'] ?? "";
-        if (introducao.trim().isNotEmpty) {
-          setState(() {
-            messages.add({
-              "role": "system",
-              "content": introducao,
-            });
-            _primeiraInteracao = true;
-          });
-        }
       }
+
+      if (result['sinopse'] != null && result['sinopse']!.isNotEmpty) {
+        messages.add({
+          "role": "system",
+          "content": result['sinopse']!,
+        });
+      }
+
+      if (result['response'] != null && result['response']!.isNotEmpty) {
+        messages.add({
+          "role": "assistant",
+          "content": result['response']!,
+        });
+      }
+
+      setState(() {
+        introShown = true;
+        isLoading = false;
+      });
     } catch (e) {
-      print("Erro ao carregar introdução/sinopse: $e");
+      setState(() => isLoading = false);
+      debugPrint("Erro ao carregar introdução: $e");
     }
   }
 
-  void _enviarMensagem() async {
-    final texto = _controller.text.trim();
-    if (texto.isEmpty) return;
+  Future<void> _sendMessage() async {
+    if (_controller.text.isEmpty) return;
 
     setState(() {
-      messages.add({"role": "user", "content": texto});
+      messages.add({"role": "user", "content": _controller.text});
       isLoading = true;
     });
 
-    _controller.clear();
-    _scrollController.animateTo(
-      _scrollController.position.maxScrollExtent + 100,
-      duration: Duration(milliseconds: 300),
-      curve: Curves.easeOut,
+    final result = await apiService.sendMessage(
+      _controller.text,
+      _score,
+      "romântico",
+      personagem: widget.character['nome'] ?? "Jennifer",
+      primeiraInteracao: false,
     );
 
-    try {
-      final resposta = await apiService.sendMessage(
-        mensagem: texto,
-        score: _score,
-        modo: "romântico",
-        personagem: widget.character['nome'] ?? "",
-        primeiraInteracao: _primeiraInteracao,
-      );
-
+    if (result['response'] != null) {
       setState(() {
-        if (resposta['introducao'] != null && resposta['introducao'].toString().isNotEmpty && _primeiraInteracao) {
-          messages.add({
-            "role": "system",
-            "content": resposta['introducao'],
-          });
-        }
-
-        messages.add({
-          "role": "assistant",
-          "content": resposta['response'] ?? "Sem resposta",
-        });
-        isLoading = false;
-        _primeiraInteracao = false;
-      });
-    } catch (e) {
-      print("Erro ao enviar mensagem: $e");
-      setState(() {
-        isLoading = false;
+        messages.add({"role": "assistant", "content": result['response']!});
       });
     }
-  }
 
-  Widget _buildMensagem(Map<String, String> msg) {
-    final isUser = msg['role'] == 'user';
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isUser ? Colors.blue[100] : Colors.grey[300],
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(msg['content'] ?? ''),
-      ),
-    );
+    _controller.clear();
+    setState(() => isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
+    final nome = widget.character['nome'] ?? "Personagem";
+
     return Scaffold(
-      appBar: AppBar(title: Text(widget.character['nome'] ?? "Personagem")),
+      appBar: AppBar(
+        title: Text("Chat com $nome"),
+      ),
       body: Column(
         children: [
           Expanded(
@@ -135,13 +110,34 @@ class _ChatScreenState extends State<ChatScreen> {
               controller: _scrollController,
               itemCount: messages.length,
               itemBuilder: (context, index) {
-                return _buildMensagem(messages[index]);
+                final msg = messages[index];
+                final isUser = msg['role'] == "user";
+                return ListTile(
+                  title: Align(
+                    alignment:
+                        isUser ? Alignment.centerRight : Alignment.centerLeft,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isUser
+                            ? Colors.blueAccent.withOpacity(0.7)
+                            : Colors.grey.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        msg['content'] ?? '',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                );
               },
             ),
           ),
           if (isLoading)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
+            const Padding(
+              padding: EdgeInsets.all(8),
               child: CircularProgressIndicator(),
             ),
           Padding(
@@ -151,13 +147,13 @@ class _ChatScreenState extends State<ChatScreen> {
                 Expanded(
                   child: TextField(
                     controller: _controller,
-                    decoration: InputDecoration(hintText: "Digite sua mensagem..."),
-                    onSubmitted: (_) => _enviarMensagem(),
+                    decoration:
+                        const InputDecoration(hintText: "Digite sua mensagem"),
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.send),
-                  onPressed: _enviarMensagem,
+                  icon: const Icon(Icons.send),
+                  onPressed: _sendMessage,
                 ),
               ],
             ),
