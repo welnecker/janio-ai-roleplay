@@ -15,6 +15,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<Map<String, String>> messages = [];
+
   bool loading = false;
   String introResumo = "";
   bool primeiraInteracao = true; // ✅ controla se deve exibir introdução
@@ -25,6 +26,7 @@ class _ChatScreenState extends State<ChatScreen> {
     carregarIntro();
   }
 
+  /// Carrega o resumo das últimas interações (sinopse)
   Future<void> carregarIntro() async {
     try {
       final result = await apiService.getIntro(
@@ -32,17 +34,23 @@ class _ChatScreenState extends State<ChatScreen> {
         personagem: widget.character["nome"],
       );
       print("Resumo recebido: ${result['resumo']}");
-      setState(() {
-        introResumo = result["resumo"] ?? "";
-        if (introResumo.isNotEmpty) {
-          messages.insert(0, {"role": "assistant", "content": introResumo});
-        }
-      });
+
+      final resumo = result["resumo"]?.trim() ?? "";
+
+      if (resumo.isNotEmpty) {
+        setState(() {
+          introResumo = resumo;
+          // ✅ sinopse adicionada como primeira mensagem
+          messages.add({"role": "assistant", "content": introResumo});
+          primeiraInteracao = false; // ✅ ignora introdução se já teve resumo
+        });
+      }
     } catch (e) {
       print("Erro ao carregar resumo: $e");
     }
   }
 
+  /// Envia mensagem e trata introdução
   Future<void> enviarMensagem() async {
     final mensagem = _controller.text.trim();
     if (mensagem.isEmpty) return;
@@ -58,11 +66,14 @@ class _ChatScreenState extends State<ChatScreen> {
       score: 5,
       modo: "romântico",
       personagem: widget.character["nome"],
-      primeiraInteracao: primeiraInteracao, // ✅ envia se for a primeira
+      primeiraInteracao: primeiraInteracao,
     );
 
-    if (primeiraInteracao && response["introducao"] != null) {
-      // Adiciona a introdução como primeira resposta
+    // ✅ Exibe introdução se for a primeira interação e NÃO houve sinopse
+    if (primeiraInteracao &&
+        introResumo.isEmpty &&
+        (response["introducao"] ?? "").toString().isNotEmpty) {
+      print("🟡 Exibindo introdução...");
       setState(() {
         messages.add({"role": "assistant", "content": response["introducao"]});
       });
@@ -71,7 +82,7 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() {
       messages.add({"role": "assistant", "content": response["response"]});
       loading = false;
-      primeiraInteracao = false; // ✅ desativa para próximas mensagens
+      primeiraInteracao = false; // ✅ impede novas introduções
     });
 
     await Future.delayed(const Duration(milliseconds: 100));
@@ -82,6 +93,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  /// Estilo personalizado para falas, pensamentos e narração
   List<TextSpan> _formatarResumo(String texto) {
     return texto.split('\n').map((linha) {
       final trimmed = linha.trim();
@@ -124,9 +136,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 final msg = messages[index];
                 final isUser = msg["role"] == "user";
 
-                bool isResumo = msg["role"] == "assistant" &&
-                    index == 0 &&
-                    introResumo.isNotEmpty;
+                // ✅ Exibe a sinopse como primeira mensagem se disponível
+                final isResumo = msg["content"] == introResumo && index == 0;
+
                 if (isResumo) {
                   return Container(
                     width: double.infinity,
@@ -146,11 +158,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 }
 
                 return Align(
-                  alignment:
-                      isUser ? Alignment.centerRight : Alignment.centerLeft,
+                  alignment: isUser
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
                   child: Container(
-                    margin:
-                        const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                    margin: const EdgeInsets.symmetric(
+                        vertical: 4, horizontal: 8),
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color:
@@ -173,6 +186,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     hintText: "Digite sua mensagem...",
                     contentPadding: EdgeInsets.symmetric(horizontal: 12),
                   ),
+                  onSubmitted: (_) => enviarMensagem(),
                 ),
               ),
               IconButton(
