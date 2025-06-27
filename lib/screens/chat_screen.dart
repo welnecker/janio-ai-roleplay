@@ -17,6 +17,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ApiService apiService = ApiService();
   final List<Map<String, String>> messages = [];
+  final ScrollController _scrollController = ScrollController();
   bool carregando = false;
   String introResumo = "";
 
@@ -27,28 +28,34 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> carregarIntro() async {
-  try {
-    final result = await apiService.getIntro(
-      nome: "Janio",
-      personagem: widget.character["nome"],
-    );
+    try {
+      final result = await apiService.getIntro(
+        nome: "Janio",
+        personagem: widget.character["nome"],
+      );
 
-    final conteudoResumo = result["resumo"]?.toString().trim() ?? "";
+      final conteudoResumo = result["resumo"]?.toString().trim() ?? "";
 
-    if (conteudoResumo.isNotEmpty) {
-      setState(() {
-        introResumo = conteudoResumo;
-        messages.insert(0, {
-          "role": "system",
-          "content": conteudoResumo,
+      if (conteudoResumo.isNotEmpty) {
+        setState(() {
+          introResumo = conteudoResumo;
+          messages.insert(0, {
+            "role": "system",
+            "content": conteudoResumo,
+          });
         });
-      });
-    }
-  } catch (e) {
-    print("Erro ao carregar introdução/sinopse: $e");
-  }
-}
 
+        await Future.delayed(const Duration(milliseconds: 100));
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    } catch (e) {
+      print("Erro ao carregar introdução/sinopse: $e");
+    }
+  }
 
   Future<void> enviarMensagem() async {
     final mensagem = _controller.text.trim();
@@ -72,6 +79,13 @@ class _ChatScreenState extends State<ChatScreen> {
       messages.add({"role": "assistant", "content": response["response"] ?? ""});
       carregando = false;
     });
+
+    await Future.delayed(const Duration(milliseconds: 100));
+    _scrollController.animateTo(
+      _scrollController.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
   }
 
   @override
@@ -82,24 +96,9 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
-          if (introResumo.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.amber[100],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.all(12),
-                child: Text(
-                  introResumo,
-                  style: const TextStyle(fontStyle: FontStyle.italic),
-                ),
-              ),
-            ),
           Expanded(
             child: ListView.builder(
+              controller: _scrollController,
               padding: const EdgeInsets.all(12),
               itemCount: messages.length,
               itemBuilder: (context, index) {
