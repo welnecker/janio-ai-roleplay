@@ -27,14 +27,28 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> carregarIntro() async {
+  try {
     final result = await apiService.getIntro(
       nome: "Janio",
       personagem: widget.character["nome"],
     );
-    setState(() {
-      introResumo = result["resumo"] ?? "";
-    });
+
+    final conteudoResumo = result["resumo"]?.toString().trim() ?? "";
+
+    if (conteudoResumo.isNotEmpty) {
+      setState(() {
+        introResumo = conteudoResumo;
+        messages.insert(0, {
+          "role": "system",
+          "content": conteudoResumo,
+        });
+      });
+    }
+  } catch (e) {
+    print("Erro ao carregar introdução/sinopse: $e");
   }
+}
+
 
   Future<void> enviarMensagem() async {
     final mensagem = _controller.text.trim();
