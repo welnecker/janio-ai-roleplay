@@ -23,7 +23,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    carregarIntro(); // ✅ Carrega apenas o resumo da introdução
+    carregarIntro();
   }
 
   Future<void> carregarIntro() async {
@@ -33,12 +33,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
     setState(() {
       introResumo = result["resumo"] ?? "";
-      if (introResumo.isNotEmpty) {
-        messages.insert(0, {
-          "role": "system",
-          "content": introResumo,
-        });
-      }
     });
   }
 
@@ -74,6 +68,22 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
+          if (introResumo.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.amber[100],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  introResumo,
+                  style: const TextStyle(fontStyle: FontStyle.italic),
+                ),
+              ),
+            ),
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.all(12),
@@ -81,13 +91,18 @@ class _ChatScreenState extends State<ChatScreen> {
               itemBuilder: (context, index) {
                 final msg = messages[index];
                 final isUser = msg["role"] == "user";
+                final isSystem = msg["role"] == "system";
                 return Align(
                   alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                   child: Container(
                     margin: const EdgeInsets.symmetric(vertical: 4),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isUser ? Colors.purple[100] : Colors.grey[300],
+                      color: isUser
+                          ? Colors.purple[100]
+                          : isSystem
+                              ? Colors.amber[100]
+                              : Colors.grey[300],
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(msg["content"] ?? ""),
