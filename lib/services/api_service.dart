@@ -1,8 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'dart:io';
 
 class ApiService {
-  final String baseUrl = "https://web-production-76f08.up.railway.app";
+  // Alterna entre produção e local automaticamente
+  final String baseUrl = Platform.isAndroid
+      ? "http://192.168.0.25:8000"  // IP do backend local (PC)
+      : bool.fromEnvironment('dart.vm.product')
+          ? "https://web-production-76f08.up.railway.app"
+          : "http://localhost:8000";
 
   /// Envia uma mensagem do usuário com nota, modo e controle de primeira interação
   Future<Map<String, dynamic>> sendMessage({
@@ -30,12 +36,12 @@ class ApiService {
         // decodifica acentuação corretamente
         return jsonDecode(utf8.decode(response.bodyBytes));
       } else {
-        print("❌ Erro no envio da mensagem: ${response.statusCode}");
-        print("Body: ${response.body}");
+        print("❌ Erro no envio da mensagem: \${response.statusCode}");
+        print("Body: \${response.body}");
         return {"response": "Erro ao enviar mensagem para o servidor."};
       }
     } catch (e) {
-      print("❌ Erro de conexão em sendMessage: $e");
+      print("❌ Erro de conexão em sendMessage: \$e");
       return {"response": "Falha na conexão com o servidor."};
     }
   }
@@ -51,11 +57,11 @@ class ApiService {
       if (response.statusCode == 200) {
         return jsonDecode(utf8.decode(response.bodyBytes));
       } else {
-        print("❌ Erro ao buscar intro: ${response.statusCode}");
+        print("❌ Erro ao buscar intro: \${response.statusCode}");
         return {"resumo": ""};
       }
     } catch (e) {
-      print("❌ Erro de conexão em getIntro: $e");
+      print("❌ Erro de conexão em getIntro: \$e");
       return {"resumo": ""};
     }
   }
