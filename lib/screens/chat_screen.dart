@@ -1,134 +1,92 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-
+import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final Map<String, dynamic> character;
-
-  const ChatScreen({super.key, required this.character});
+  const ChatScreen({Key? key, required this.character}) : super(key: key);
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  final TextEditingController _controller = TextEditingController();
   final ApiService apiService = ApiService();
+  final TextEditingController _controller = TextEditingController();
   final List<Map<String, String>> messages = [];
-  final ScrollController _scrollController = ScrollController();
-  bool carregando = false;
-  String introResumo = "";
+  String introResumo = '';
 
   @override
   void initState() {
     super.initState();
-    carregarIntro();
+    _loadIntro();
   }
 
-  Future<void> carregarIntro() async {
-    try {
-      final result = await apiService.getIntro(
-        nome: "Janio",
-        personagem: widget.character["nome"],
-      );
-
-      final conteudoResumo = result["resumo"]?.toString().trim() ?? "";
-
-      if (conteudoResumo.isNotEmpty) {
-        setState(() {
-          introResumo = conteudoResumo;
-          messages.insert(0, {
-            "role": "system",
-            "content": conteudoResumo,
-          });
+  Future<void> _loadIntro() async {
+    final resumo = await apiService.getIntro(widget.character["nome"]);
+    if (resumo.isNotEmpty) {
+      setState(() {
+        introResumo = resumo;
+        messages.insert(0, {
+          "role": "system",
+          "content": resumo,
         });
-
-        await Future.delayed(const Duration(milliseconds: 100));
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    } catch (e) {
-      print("Erro ao carregar introdução/sinopse: $e");
+      });
     }
   }
 
-  Future<void> enviarMensagem() async {
-    final mensagem = _controller.text.trim();
-    if (mensagem.isEmpty) return;
-
+  void _sendMessage(String mensagem) async {
+    if (mensagem.trim().isEmpty) return;
     setState(() {
       messages.add({"role": "user", "content": mensagem});
-      carregando = true;
     });
-
     _controller.clear();
 
     final response = await apiService.sendMessage(
       mensagem: mensagem,
-      score: 5,
-      modo: "romântico",
       personagem: widget.character["nome"],
     );
 
-    setState(() {
-      messages.add({"role": "assistant", "content": response["response"] ?? ""});
-      carregando = false;
-    });
-
-    await Future.delayed(const Duration(milliseconds: 100));
-    _scrollController.animateTo(
-      _scrollController.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-    );
+    if (response.containsKey("response")) {
+      setState(() {
+        messages.add({"role": "assistant", "content": response["response"]});
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.character["nome"]),
+        title: Text(widget.character["nome"], style: GoogleFonts.roboto()),
       ),
       body: Column(
         children: [
           Expanded(
             child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(8.0),
               itemCount: messages.length,
               itemBuilder: (context, index) {
-                final msg = messages[index];
-                final isUser = msg["role"] == "user";
-                final isSystem = msg["role"] == "system";
+                final message = messages[index];
+                final isUser = message["role"] == "user";
                 return Align(
                   alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                   child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.symmetric(vertical: 4.0),
+                    padding: const EdgeInsets.all(12.0),
                     decoration: BoxDecoration(
-                      color: isUser
-                          ? Colors.purple[100]
-                          : isSystem
-                              ? Colors.amber[100]
-                              : Colors.grey[300],
-                      borderRadius: BorderRadius.circular(12),
+                      color: isUser ? Colors.blue[100] : Colors.grey[300],
+                      borderRadius: BorderRadius.circular(12.0),
                     ),
-                    child: Text(msg["content"] ?? ""),
+                    child: Text(
+                      message["content"] ?? '',
+                      style: GoogleFonts.roboto(fontSize: 16),
+                    ),
                   ),
                 );
               },
             ),
           ),
-          if (carregando)
-            const Padding(
-              padding: EdgeInsets.all(8),
-              child: CircularProgressIndicator(),
-            ),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
@@ -139,12 +97,12 @@ class _ChatScreenState extends State<ChatScreen> {
                     decoration: const InputDecoration(
                       hintText: "Digite sua mensagem...",
                     ),
-                    onSubmitted: (_) => enviarMensagem(),
+                    onSubmitted: _sendMessage,
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.send),
-                  onPressed: enviarMensagem,
+                  onPressed: () => _sendMessage(_controller.text),
                 ),
               ],
             ),
