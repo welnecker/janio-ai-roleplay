@@ -22,11 +22,11 @@ class ApiService {
       if (response.statusCode == 200) {
         return jsonDecode(utf8.decode(response.bodyBytes));
       } else {
-        print("Erro no envio da mensagem: \${response.statusCode}");
+        print("Erro no envio da mensagem: ${response.statusCode}");
         return {};
       }
     } catch (e) {
-      print("Erro ao enviar mensagem: \$e");
+      print("Erro ao enviar mensagem: $e");
       return {};
     }
   }
@@ -39,12 +39,33 @@ class ApiService {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
         return data['resumo'] ?? '';
       } else {
-        print("Erro ao carregar introdução: \${response.statusCode}");
+        print("Erro ao carregar introdução: ${response.statusCode}");
         return '';
       }
     } catch (e) {
-      print("Erro ao carregar introdução: \$e");
+      print("Erro ao carregar introdução: $e");
       return '';
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getMensagens(String personagem) async {
+    final url = Uri.parse('$baseUrl/mensagens/?personagem=$personagem');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        if (data is List) {
+          return List<Map<String, dynamic>>.from(data);
+        } else {
+          return [];
+        }
+      } else {
+        print("Erro ao carregar mensagens: ${response.statusCode}");
+        return [];
+      }
+    } catch (e) {
+      print("Erro ao carregar mensagens: $e");
+      return [];
     }
   }
 }
