@@ -15,35 +15,29 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<Map<String, String>> messages = [];
-  String introResumo = '';
+  Map<String, String>? introMessage;
 
   @override
   void initState() {
     super.initState();
-    _loadIntro();
+    _loadInitialMemory();
     _loadPreviousMessages();
   }
 
-  Future<void> _loadIntro() async {
-    final resumo = await apiService.getIntro(widget.character["nome"]);
-    if (resumo.isNotEmpty) {
+  Future<void> _loadInitialMemory() async {
+    final previous = await apiService.getMensagens(widget.character["nome"]);
+    if (previous.isNotEmpty) {
+      final intro = previous.first;
+      introMessage = {"role": "system", "content": intro["content"] ?? ''};
       setState(() {
-        introResumo = resumo;
-        messages.insert(0, {
-          "role": "system",
-          "content": resumo,
-        });
+        messages.add(introMessage!);
+        messages.addAll(previous.sublist(1));
       });
     }
   }
 
   Future<void> _loadPreviousMessages() async {
-    final previous = await apiService.getMensagens(widget.character["nome"]);
-    if (previous.isNotEmpty) {
-      setState(() {
-        messages.insertAll(0, previous);
-      });
-    }
+    // Nenhuma ação aqui. Mantida para possível uso futuro.
   }
 
   void _sendMessage(String mensagem) async {
@@ -82,6 +76,17 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.character["nome"], style: GoogleFonts.roboto()),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              setState(() {
+                messages.clear();
+                if (introMessage != null) messages.add(introMessage!);
+              });
+            },
+          )
+        ],
       ),
       body: Column(
         children: [
