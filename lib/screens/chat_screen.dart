@@ -21,7 +21,6 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _loadInitialMemory();
-    _loadPreviousMessages();
   }
 
   Future<void> _loadInitialMemory() async {
@@ -31,13 +30,12 @@ class _ChatScreenState extends State<ChatScreen> {
       introMessage = {"role": "system", "content": intro["content"] ?? ''};
       setState(() {
         messages.add(introMessage!);
-        messages.addAll(previous.sublist(1));
+        messages.addAll(previous.sublist(1).map((msg) => {
+          "role": msg["role"] ?? 'assistant',
+          "content": msg["content"] ?? ''
+        }));
       });
     }
-  }
-
-  Future<void> _loadPreviousMessages() async {
-    // Nenhuma ação aqui. Mantida para possível uso futuro.
   }
 
   void _sendMessage(String mensagem) async {
