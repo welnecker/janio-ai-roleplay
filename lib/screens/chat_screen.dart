@@ -13,6 +13,7 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final ApiService apiService = ApiService();
   final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   final List<Map<String, String>> messages = [];
   String introResumo = '';
 
@@ -20,6 +21,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _loadIntro();
+    _loadPreviousMessages();
   }
 
   Future<void> _loadIntro() async {
@@ -35,12 +37,22 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _loadPreviousMessages() async {
+    final previous = await apiService.getMensagens(widget.character["nome"]);
+    if (previous.isNotEmpty) {
+      setState(() {
+        messages.insertAll(0, previous);
+      });
+    }
+  }
+
   void _sendMessage(String mensagem) async {
     if (mensagem.trim().isEmpty) return;
     setState(() {
       messages.add({"role": "user", "content": mensagem});
     });
     _controller.clear();
+    _scrollToBottom();
 
     final response = await apiService.sendMessage(
       mensagem: mensagem,
@@ -51,7 +63,18 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         messages.add({"role": "assistant", "content": response["response"]});
       });
+      _scrollToBottom();
     }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   @override
@@ -64,6 +87,7 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Expanded(
             child: ListView.builder(
+              controller: _scrollController,
               padding: const EdgeInsets.all(8.0),
               itemCount: messages.length,
               itemBuilder: (context, index) {
