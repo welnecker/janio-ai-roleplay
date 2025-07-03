@@ -13,6 +13,7 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.2
   http: ^0.13.5
+  google_fonts: ^6.2.1  # ✅ Adicione esta linha
 
 dev_dependencies:
   flutter_test:
