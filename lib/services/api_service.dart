@@ -49,25 +49,21 @@ class ApiService {
   }
 
   Future<List<Map<String, String>>> getMensagens(String personagem) async {
-    final url = Uri.parse('$baseUrl/mensagens/?personagem=$personagem');
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final List<dynamic> data =
-            jsonDecode(utf8.decode(response.bodyBytes));
-        return data
-            .map((msg) => {
-                  "role": msg["role"] ?? 'assistant',
-                  "content": msg["content"] ?? ''
-                })
-            .toList();
-      } else {
-        print("Erro ao carregar mensagens: ${response.statusCode}");
-        return [];
-      }
-    } catch (e) {
-      print("Erro ao carregar mensagens: $e");
+  final url = Uri.parse('$baseUrl/mensagens/?personagem=$personagem');
+  try {
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      return (data as List).map<Map<String, String>>((item) => {
+        "role": item["role"] ?? '',
+        "content": item["content"] ?? '',
+      }).toList();
+    } else {
+      print("Erro ao carregar mensagens: ${response.statusCode}");
       return [];
     }
+  } catch (e) {
+    print("Erro ao carregar mensagens: $e");
+    return [];
   }
 }
