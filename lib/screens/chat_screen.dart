@@ -23,7 +23,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _loadInitialMemory() async {
-    final introText = await apiService.getIntro(widget.character["nome"]);
+    final introText = await apiService.getResumo(widget.character["nome"]);
     if (introText.isNotEmpty) {
       introMessage = {"role": "system", "content": introText};
       messages.add(introMessage!);
