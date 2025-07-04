@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../services/api_service.dart';
+import 'package:janio_ai_roleplay/services/api_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final Map<String, dynamic> character;
-  const ChatScreen({Key? key, required this.character}) : super(key: key);
+  const ChatScreen({super.key, required this.character});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  final ApiService apiService = ApiService();
+  final apiService = ApiService();
   final TextEditingController _controller = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
-  final List<Map<String, String>> messages = [];
+  List<Map<String, String>> messages = [];
   Map<String, String>? introMessage;
+  bool isLoading = false;
 
   @override
   void initState() {
@@ -24,96 +23,98 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _loadInitialMemory() async {
-    final previous = await apiService.getMensagens(widget.character["nome"]);
-    if (previous.isNotEmpty) {
-      final intro = previous.first;
-      introMessage = {"role": "system", "content": intro["content"] ?? ''};
-      setState(() {
-        messages.add(introMessage!);
-        messages.addAll(previous.sublist(1).map((msg) => {
-          "role": msg["role"] ?? 'assistant',
-          "content": msg["content"] ?? ''
-        }));
-      });
+    final introText = await apiService.getIntro(widget.character["nome"]);
+    if (introText.isNotEmpty) {
+      introMessage = {"role": "system", "content": introText};
+      messages.add(introMessage!);
     }
+
+    final previous = await apiService.getMensagens(widget.character["nome"]);
+    setState(() {
+      messages.addAll(previous.map((msg) => {
+        "role": msg["role"] ?? 'assistant',
+        "content": msg["content"] ?? ''
+      }));
+    });
   }
 
-  void _sendMessage(String mensagem) async {
-    if (mensagem.trim().isEmpty) return;
-    setState(() {
-      messages.add({"role": "user", "content": mensagem});
-    });
+  Future<void> _sendMessage() async {
+    final text = _controller.text;
+    if (text.isEmpty) return;
     _controller.clear();
-    _scrollToBottom();
+    setState(() {
+      messages.add({"role": "user", "content": text});
+      isLoading = true;
+    });
 
     final response = await apiService.sendMessage(
-      mensagem: mensagem,
+      mensagem: text,
       personagem: widget.character["nome"],
     );
 
-    if (response.containsKey("response")) {
-      setState(() {
-        messages.add({"role": "assistant", "content": response["response"]});
-      });
-      _scrollToBottom();
-    }
+    final aiText = response['resposta'] ?? 'Erro na resposta';
+    setState(() {
+      messages.add({"role": "assistant", "content": aiText});
+      isLoading = false;
+    });
   }
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    });
+  Widget _buildMessage(Map<String, String> message) {
+    final isUser = message["role"] == "user";
+    final isSystem = message["role"] == "system";
+    final alignment = isUser ? Alignment.centerRight : Alignment.centerLeft;
+    final color = isSystem
+        ? Colors.grey[300]
+        : isUser
+            ? Colors.blue[100]
+            : Colors.green[100];
+
+    return Align(
+      alignment: alignment,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(message["content"] ?? ''),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.character["nome"], style: GoogleFonts.roboto()),
+        title: Text(widget.character["nome"]),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () {
+            onPressed: () async {
               setState(() {
                 messages.clear();
-                if (introMessage != null) messages.add(introMessage!);
               });
+              await _loadInitialMemory();
             },
-          )
+          ),
         ],
       ),
       body: Column(
         children: [
           Expanded(
             child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(8.0),
               itemCount: messages.length,
               itemBuilder: (context, index) {
-                final message = messages[index];
-                final isUser = message["role"] == "user";
-                return Align(
-                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4.0),
-                    padding: const EdgeInsets.all(12.0),
-                    decoration: BoxDecoration(
-                      color: isUser ? Colors.blue[100] : Colors.grey[300],
-                      borderRadius: BorderRadius.circular(12.0),
-                    ),
-                    child: Text(
-                      message["content"] ?? '',
-                      style: GoogleFonts.roboto(fontSize: 16),
-                    ),
-                  ),
-                );
+                return _buildMessage(messages[index]);
               },
             ),
           ),
+          if (isLoading)
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: CircularProgressIndicator(),
+            ),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
@@ -124,12 +125,11 @@ class _ChatScreenState extends State<ChatScreen> {
                     decoration: const InputDecoration(
                       hintText: "Digite sua mensagem...",
                     ),
-                    onSubmitted: _sendMessage,
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.send),
-                  onPressed: () => _sendMessage(_controller.text),
+                  onPressed: _sendMessage,
                 ),
               ],
             ),
