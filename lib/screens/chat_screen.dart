@@ -31,10 +31,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
     final previous = await apiService.getMensagens(widget.character["nome"]);
     setState(() {
-      messages.addAll(previous.map((msg) => {
+      messages.addAll(previous.map<Map<String, String>>((msg) => {
         "role": msg["role"] ?? 'assistant',
         "content": msg["content"] ?? ''
-      }));
+      }).toList());
     });
   }
 
