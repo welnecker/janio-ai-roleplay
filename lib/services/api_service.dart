@@ -4,7 +4,6 @@ import 'package:http/http.dart' as http;
 class ApiService {
   final String baseUrl = "https://web-production-76f08.up.railway.app";
 
-  /// Envia mensagem do usuário para o backend
   Future<Map<String, dynamic>> sendMessage({
     required String mensagem,
     required String personagem,
@@ -32,7 +31,6 @@ class ApiService {
     }
   }
 
-  /// Obtém o resumo (introdução) da planilha, primeira linha com role=system
   Future<String> getResumo(String personagem) async {
     final url = Uri.parse('$baseUrl/resumo/?personagem=$personagem');
     try {
@@ -50,14 +48,19 @@ class ApiService {
     }
   }
 
-  /// Carrega mensagens anteriores (histórico do personagem)
-  Future<List<Map<String, dynamic>>> getMensagens(String personagem) async {
+  Future<List<Map<String, String>>> getMensagens(String personagem) async {
     final url = Uri.parse('$baseUrl/mensagens/?personagem=$personagem');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        return List<Map<String, dynamic>>.from(data);
+        final List<dynamic> data =
+            jsonDecode(utf8.decode(response.bodyBytes));
+        return data
+            .map((msg) => {
+                  "role": msg["role"] ?? 'assistant',
+                  "content": msg["content"] ?? ''
+                })
+            .toList();
       } else {
         print("Erro ao carregar mensagens: ${response.statusCode}");
         return [];
