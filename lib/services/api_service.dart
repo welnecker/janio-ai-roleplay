@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 class ApiService {
   final String baseUrl = "https://web-production-76f08.up.railway.app";
 
+  /// Envia mensagem do usuário para o backend
   Future<Map<String, dynamic>> sendMessage({
     required String mensagem,
     required String personagem,
@@ -31,34 +32,32 @@ class ApiService {
     }
   }
 
-  Future<String> getIntro(String personagem) async {
-    final url = Uri.parse('$baseUrl/intro/?personagem=$personagem');
+  /// Obtém o resumo (introdução) da planilha, primeira linha com role=system
+  Future<String> getResumo(String personagem) async {
+    final url = Uri.parse('$baseUrl/resumo/?personagem=$personagem');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
         return data['resumo'] ?? '';
       } else {
-        print("Erro ao carregar introdução: ${response.statusCode}");
+        print("Erro ao carregar resumo: ${response.statusCode}");
         return '';
       }
     } catch (e) {
-      print("Erro ao carregar introdução: $e");
+      print("Erro ao carregar resumo: $e");
       return '';
     }
   }
 
+  /// Carrega mensagens anteriores (histórico do personagem)
   Future<List<Map<String, dynamic>>> getMensagens(String personagem) async {
     final url = Uri.parse('$baseUrl/mensagens/?personagem=$personagem');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
-        if (data is List) {
-          return List<Map<String, dynamic>>.from(data);
-        } else {
-          return [];
-        }
+        return List<Map<String, dynamic>>.from(data);
       } else {
         print("Erro ao carregar mensagens: ${response.statusCode}");
         return [];
