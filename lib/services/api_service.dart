@@ -4,9 +4,11 @@ import 'package:http/http.dart' as http;
 class ApiService {
   final String baseUrl = "https://web-production-76f08.up.railway.app";
 
+  /// ✅ Envia mensagem ao backend, com suporte a regeneração de resposta
   Future<Map<String, dynamic>> sendMessage({
     required String mensagem,
     required String personagem,
+    bool regenerar = false, // ✅ Novo parâmetro com valor padrão
   }) async {
     final url = Uri.parse("$baseUrl/chat/");
     try {
@@ -16,6 +18,7 @@ class ApiService {
         body: jsonEncode({
           "user_input": mensagem,
           "personagem": personagem,
+          "regenerar": regenerar, // ✅ Envia para o backend
         }),
       );
 
@@ -31,6 +34,7 @@ class ApiService {
     }
   }
 
+  /// Carrega a introdução com resumo da personagem
   Future<String> getResumo(String personagem) async {
     final url = Uri.parse('$baseUrl/resumo/?personagem=$personagem');
     try {
@@ -48,6 +52,7 @@ class ApiService {
     }
   }
 
+  /// Recupera mensagens anteriores salvas na planilha
   Future<List<Map<String, String>>> getMensagens(String personagem) async {
     final url = Uri.parse('$baseUrl/mensagens/?personagem=$personagem');
     try {
@@ -70,7 +75,7 @@ class ApiService {
     }
   }
 
-  /// ✅ Novo método: reseta todas as memórias do personagem
+  /// ✅ Apaga todas as memórias da personagem no ChromaDB
   Future<String> resetMemorias(String personagem) async {
     final url = Uri.parse('$baseUrl/memorias_clear/');
     try {
