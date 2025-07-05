@@ -38,30 +38,60 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  Future<void> _sendMessage() async {
-    final text = _controller.text;
-    if (text.isEmpty) return;
-    _controller.clear();
-    setState(() {
-      messages.add({"role": "user", "content": text});
-      isLoading = true;
-    });
+  Future<void> _sendMessage({bool regenerar = false}) async {
+    String userText;
 
-    final response = await apiService.sendMessage(
-      mensagem: text,
-      personagem: widget.character["nome"],
-    );
+    if (regenerar) {
+      // Busca a última fala do usuário
+      final lastUser = messages.lastWhere((m) => m["role"] == "user", orElse: () => {});
+      userText = lastUser["content"] ?? '';
+      if (userText.isEmpty) return;
 
-    final aiText = response['resposta'] ?? 'Erro na resposta';
-    setState(() {
-      messages.add({"role": "assistant", "content": aiText});
-      isLoading = false;
-    });
+      setState(() {
+        isLoading = true;
+      });
+
+      final response = await apiService.sendMessage(
+        mensagem: userText,
+        personagem: widget.character["nome"],
+        regenerar: true,
+      );
+
+      final aiText = response['resposta'] ?? 'Erro na resposta';
+      setState(() {
+        messages.removeLast(); // remove última resposta da IA
+        messages.add({"role": "assistant", "content": aiText});
+        isLoading = false;
+      });
+
+    } else {
+      userText = _controller.text;
+      if (userText.isEmpty) return;
+      _controller.clear();
+      setState(() {
+        messages.add({"role": "user", "content": userText});
+        isLoading = true;
+      });
+
+      final response = await apiService.sendMessage(
+        mensagem: userText,
+        personagem: widget.character["nome"],
+      );
+
+      final aiText = response['resposta'] ?? 'Erro na resposta';
+      setState(() {
+        messages.add({"role": "assistant", "content": aiText});
+        isLoading = false;
+      });
+    }
   }
 
-  Widget _buildMessage(Map<String, String> message) {
+  Widget _buildMessage(Map<String, String> message, int index) {
     final isUser = message["role"] == "user";
     final isSystem = message["role"] == "system";
+    final isLastAssistant = message["role"] == "assistant" &&
+        index == messages.lastIndexWhere((m) => m["role"] == "assistant");
+
     final alignment = isUser ? Alignment.centerRight : Alignment.centerLeft;
     final color = isSystem
         ? Colors.grey[300]
@@ -71,14 +101,27 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return Align(
       alignment: alignment,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(message["content"] ?? ''),
+      child: Row(
+        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        children: [
+          Flexible(
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(message["content"] ?? ''),
+            ),
+          ),
+          if (isLastAssistant)
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: "Regenerar resposta",
+              onPressed: () => _sendMessage(regenerar: true),
+            ),
+        ],
       ),
     );
   }
@@ -87,42 +130,42 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-  title: Text(widget.character["nome"]),
-  actions: [
-    IconButton(
-      icon: const Icon(Icons.refresh),
-      tooltip: "Recarregar histórico",
-      onPressed: () async {
-        setState(() {
-          messages.clear();
-        });
-        await _loadInitialMemory();
-      },
-    ),
-    IconButton(
-      icon: const Icon(Icons.restart_alt),
-      tooltip: "Resetar memórias",
-      onPressed: () async {
-        final result = await apiService.resetMemorias(widget.character["nome"]);
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result)),
-          );
-          setState(() {
-            messages.clear();
-          });
-        }
-      },
-    ),
-  ],
-),
+        title: Text(widget.character["nome"]),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: "Recarregar histórico",
+            onPressed: () async {
+              setState(() {
+                messages.clear();
+              });
+              await _loadInitialMemory();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.restart_alt),
+            tooltip: "Resetar memórias",
+            onPressed: () async {
+              final result = await apiService.resetMemorias(widget.character["nome"]);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(result)),
+                );
+                setState(() {
+                  messages.clear();
+                });
+              }
+            },
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Expanded(
             child: ListView.builder(
               itemCount: messages.length,
               itemBuilder: (context, index) {
-                return _buildMessage(messages[index]);
+                return _buildMessage(messages[index], index);
               },
             ),
           ),
@@ -145,7 +188,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.send),
-                  onPressed: _sendMessage,
+                  onPressed: () => _sendMessage(),
                 ),
               ],
             ),
