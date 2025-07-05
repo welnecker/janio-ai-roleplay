@@ -69,4 +69,25 @@ class ApiService {
       return [];
     }
   }
+
+  /// ✅ Novo método: reseta todas as memórias do personagem
+  Future<String> resetMemorias(String personagem) async {
+    final url = Uri.parse('$baseUrl/memorias_clear/');
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"personagem": personagem}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        return data["status"] ?? "Memórias apagadas.";
+      } else {
+        return "Erro ao apagar memórias: ${response.statusCode}";
+      }
+    } catch (e) {
+      return "Erro ao apagar memórias: $e";
+    }
+  }
 }
