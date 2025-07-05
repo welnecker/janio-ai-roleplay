@@ -87,19 +87,35 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.character["nome"]),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () async {
-              setState(() {
-                messages.clear();
-              });
-              await _loadInitialMemory();
-            },
-          ),
-        ],
-      ),
+  title: Text(widget.character["nome"]),
+  actions: [
+    IconButton(
+      icon: const Icon(Icons.refresh),
+      tooltip: "Recarregar histórico",
+      onPressed: () async {
+        setState(() {
+          messages.clear();
+        });
+        await _loadInitialMemory();
+      },
+    ),
+    IconButton(
+      icon: const Icon(Icons.restart_alt),
+      tooltip: "Resetar memórias",
+      onPressed: () async {
+        final result = await apiService.resetMemorias(widget.character["nome"]);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result)),
+          );
+          setState(() {
+            messages.clear();
+          });
+        }
+      },
+    ),
+  ],
+),
       body: Column(
         children: [
           Expanded(
