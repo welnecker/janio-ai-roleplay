@@ -92,8 +92,28 @@ class ApiService {
     }
   }
 
-  /// ✅ Novo método: semear memórias fixas da planilha
-  Future<String> semearMemoriasFixas(String personagem) async {
+  /// ✅ Semear memórias principais da aba "personagens"
+  Future<String> semeiaMemoriasPrincipais(String personagem) async {
+    final url = Uri.parse('$baseUrl/memorias_seed/');
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"personagem": personagem}),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        return data["status"] ?? "Memórias principais semeadas.";
+      } else {
+        return "Erro ao semear memórias principais: ${response.statusCode}";
+      }
+    } catch (e) {
+      return "Erro ao semear memórias principais: $e";
+    }
+  }
+
+  /// ✅ Semear memórias fixas da aba "memorias_fixas"
+  Future<String> semeiaMemoriasFixas(String personagem) async {
     final url = Uri.parse('$baseUrl/memorias_seed_fixas/');
     try {
       final response = await http.post(
@@ -101,7 +121,6 @@ class ApiService {
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"personagem": personagem}),
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
         return data["status"] ?? "Memórias fixas semeadas.";
