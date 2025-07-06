@@ -19,7 +19,13 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    _semeiaMemorias(); // ⬅️ Memórias principais e fixas semeadas automaticamente
     _loadInitialMemory();
+  }
+
+  Future<void> _semeiaMemorias() async {
+    await apiService.semeiaMemoriasPrincipais(widget.character["nome"]);
+    await apiService.semeiaMemoriasFixas(widget.character["nome"]);
   }
 
   Future<void> _loadInitialMemory() async {
@@ -32,9 +38,9 @@ class _ChatScreenState extends State<ChatScreen> {
     final previous = await apiService.getMensagens(widget.character["nome"]);
     setState(() {
       messages.addAll(previous.map<Map<String, String>>((msg) => {
-            "role": msg["role"] ?? 'assistant',
-            "content": msg["content"] ?? ''
-          }).toList());
+        "role": msg["role"] ?? 'assistant',
+        "content": msg["content"] ?? ''
+      }).toList());
     });
   }
 
@@ -46,18 +52,23 @@ class _ChatScreenState extends State<ChatScreen> {
       userText = lastUser["content"] ?? '';
       if (userText.isEmpty) return;
 
-      setState(() => isLoading = true);
+      setState(() {
+        isLoading = true;
+      });
+
       final response = await apiService.sendMessage(
         mensagem: userText,
         personagem: widget.character["nome"],
         regenerar: true,
       );
+
       final aiText = response['resposta'] ?? 'Erro na resposta';
       setState(() {
         messages.removeLast(); // remove última resposta da IA
         messages.add({"role": "assistant", "content": aiText});
         isLoading = false;
       });
+
     } else {
       userText = _controller.text;
       if (userText.isEmpty) return;
@@ -71,20 +82,12 @@ class _ChatScreenState extends State<ChatScreen> {
         mensagem: userText,
         personagem: widget.character["nome"],
       );
+
       final aiText = response['resposta'] ?? 'Erro na resposta';
       setState(() {
         messages.add({"role": "assistant", "content": aiText});
         isLoading = false;
       });
-    }
-  }
-
-  Future<void> semearMemoriasFixas() async {
-    final result = await apiService.semearMemoriasFixas(widget.character["nome"]);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result)),
-      );
     }
   }
 
@@ -138,7 +141,9 @@ class _ChatScreenState extends State<ChatScreen> {
             icon: const Icon(Icons.refresh),
             tooltip: "Recarregar histórico",
             onPressed: () async {
-              setState(() => messages.clear());
+              setState(() {
+                messages.clear();
+              });
               await _loadInitialMemory();
             },
           ),
@@ -151,14 +156,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text(result)),
                 );
-                setState(() => messages.clear());
+                setState(() {
+                  messages.clear();
+                });
               }
             },
-          ),
-          IconButton(
-            icon: const Icon(Icons.bolt),
-            tooltip: "Semear memórias fixas",
-            onPressed: semearMemoriasFixas,
           ),
         ],
       ),
