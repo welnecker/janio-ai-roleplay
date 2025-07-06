@@ -13,10 +13,9 @@ class _ChatScreenState extends State<ChatScreen> {
   final apiService = ApiService();
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-
   List<Map<String, String>> messages = [];
   bool isLoading = false;
-  bool primeiraMensagemDestacada = false;
+  bool memoriaInicialColada = false;
 
   @override
   void initState() {
@@ -34,33 +33,20 @@ class _ChatScreenState extends State<ChatScreen> {
     final memoriaResp = await apiService.semeiaMemoriaInicial(widget.character["nome"]);
     final mensagemInicial = memoriaResp["mensagem_inicial"];
 
-    if (mensagemInicial != null && mensagemInicial.toString().trim().isNotEmpty) {
-      messages.add({
-        "role": "assistant",
-        "content": mensagemInicial,
-        "destacar": "true"
-      });
+    if (mensagemInicial != null &&
+        mensagemInicial.toString().trim().isNotEmpty &&
+        !memoriaInicialColada) {
+      messages.add({"role": "assistant", "content": mensagemInicial});
+      memoriaInicialColada = true;
     }
 
     final previous = await apiService.getMensagens(widget.character["nome"]);
     setState(() {
       messages.addAll(previous.map<Map<String, String>>((msg) => {
-        "role": msg["role"] ?? 'assistant',
-        "content": msg["content"] ?? ''
-      }).toList());
-    });
-    _scrollToBottom();
-  }
-
-  void _scrollToBottom() {
-    Future.delayed(Duration(milliseconds: 100), () {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
+            "role": msg["role"] ?? 'assistant',
+            "content": msg["content"] ?? ''
+          }));
+      _scrollToBottom();
     });
   }
 
@@ -72,9 +58,7 @@ class _ChatScreenState extends State<ChatScreen> {
       userText = lastUser["content"] ?? '';
       if (userText.isEmpty) return;
 
-      setState(() {
-        isLoading = true;
-      });
+      setState(() => isLoading = true);
 
       final response = await apiService.sendMessage(
         mensagem: userText,
@@ -87,8 +71,9 @@ class _ChatScreenState extends State<ChatScreen> {
         messages.removeLast(); // remove última resposta da IA
         messages.add({"role": "assistant", "content": aiText});
         isLoading = false;
+        _scrollToBottom();
       });
-      _scrollToBottom();
+
     } else {
       userText = _controller.text;
       if (userText.isEmpty) return;
@@ -107,27 +92,35 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         messages.add({"role": "assistant", "content": aiText});
         isLoading = false;
+        _scrollToBottom();
       });
-      _scrollToBottom();
     }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   Widget _buildMessage(Map<String, String> message, int index) {
     final isUser = message["role"] == "user";
     final isSystem = message["role"] == "system";
-    final isFirstIntro = message["destacar"] == "true";
     final isLastAssistant = message["role"] == "assistant" &&
         index == messages.lastIndexWhere((m) => m["role"] == "assistant");
 
     final alignment = isUser ? Alignment.centerRight : Alignment.centerLeft;
-
-    final Color? color = isSystem
+    final color = isSystem
         ? Colors.grey[300]
-        : isFirstIntro
-            ? Colors.orange[100]
-            : isUser
-                ? Colors.blue[100]
-                : Colors.green[100];
+        : isUser
+            ? Colors.blue[100]
+            : Colors.green[100];
 
     return Align(
       alignment: alignment,
@@ -140,18 +133,9 @@ class _ChatScreenState extends State<ChatScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: color,
-                border: isFirstIntro
-                    ? Border.all(color: Colors.orange, width: 2)
-                    : null,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Text(
-                message["content"] ?? '',
-                style: TextStyle(
-                  fontStyle: isFirstIntro ? FontStyle.italic : FontStyle.normal,
-                  fontWeight: isFirstIntro ? FontWeight.w500 : FontWeight.normal,
-                ),
-              ),
+              child: Text(message["content"] ?? ''),
             ),
           ),
           if (isLastAssistant)
@@ -177,6 +161,7 @@ class _ChatScreenState extends State<ChatScreen> {
             onPressed: () async {
               setState(() {
                 messages.clear();
+                memoriaInicialColada = false;
               });
               await _loadInitialMemory();
             },
@@ -192,7 +177,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 );
                 setState(() {
                   messages.clear();
+                  memoriaInicialColada = false;
                 });
+                await _loadInitialMemory();
               }
             },
           ),
