@@ -12,14 +12,16 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final apiService = ApiService();
   final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
   List<Map<String, String>> messages = [];
-  Map<String, String>? introMessage;
   bool isLoading = false;
+  bool primeiraMensagemDestacada = false;
 
   @override
   void initState() {
     super.initState();
-    _semeiaMemorias(); // ⬅️ Memórias principais e fixas semeadas automaticamente
+    _semeiaMemorias();
     _loadInitialMemory();
   }
 
@@ -28,26 +30,39 @@ class _ChatScreenState extends State<ChatScreen> {
     await apiService.semeiaMemoriasFixas(widget.character["nome"]);
   }
 
- Future<void> _loadInitialMemory() async {
-  // Primeiro: chama o backend para obter e semear a memória inicial
-  final memoriaResp = await apiService.semeiaMemoriaInicial(widget.character["nome"]);
-  final mensagemInicial = memoriaResp["mensagem_inicial"];
+  Future<void> _loadInitialMemory() async {
+    final memoriaResp = await apiService.semeiaMemoriaInicial(widget.character["nome"]);
+    final mensagemInicial = memoriaResp["mensagem_inicial"];
 
-  // Se houver mensagem inicial, exibe na tela como assistant
-  if (mensagemInicial != null && mensagemInicial.toString().trim().isNotEmpty) {
-    messages.add({"role": "assistant", "content": mensagemInicial});
+    if (mensagemInicial != null && mensagemInicial.toString().trim().isNotEmpty) {
+      messages.add({
+        "role": "assistant",
+        "content": mensagemInicial,
+        "destacar": "true"
+      });
+    }
+
+    final previous = await apiService.getMensagens(widget.character["nome"]);
+    setState(() {
+      messages.addAll(previous.map<Map<String, String>>((msg) => {
+        "role": msg["role"] ?? 'assistant',
+        "content": msg["content"] ?? ''
+      }).toList());
+    });
+    _scrollToBottom();
   }
 
-  // Segundo: busca mensagens anteriores já salvas (user + assistant)
-  final previous = await apiService.getMensagens(widget.character["nome"]);
-  setState(() {
-    messages.addAll(previous.map<Map<String, String>>((msg) => {
-      "role": msg["role"] ?? 'assistant',
-      "content": msg["content"] ?? ''
-    }).toList());
-  });
-}
-
+  void _scrollToBottom() {
+    Future.delayed(Duration(milliseconds: 100), () {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
 
   Future<void> _sendMessage({bool regenerar = false}) async {
     String userText;
@@ -73,7 +88,7 @@ class _ChatScreenState extends State<ChatScreen> {
         messages.add({"role": "assistant", "content": aiText});
         isLoading = false;
       });
-
+      _scrollToBottom();
     } else {
       userText = _controller.text;
       if (userText.isEmpty) return;
@@ -93,21 +108,26 @@ class _ChatScreenState extends State<ChatScreen> {
         messages.add({"role": "assistant", "content": aiText});
         isLoading = false;
       });
+      _scrollToBottom();
     }
   }
 
   Widget _buildMessage(Map<String, String> message, int index) {
     final isUser = message["role"] == "user";
     final isSystem = message["role"] == "system";
+    final isFirstIntro = message["destacar"] == "true";
     final isLastAssistant = message["role"] == "assistant" &&
         index == messages.lastIndexWhere((m) => m["role"] == "assistant");
 
     final alignment = isUser ? Alignment.centerRight : Alignment.centerLeft;
-    final color = isSystem
+
+    final Color? color = isSystem
         ? Colors.grey[300]
-        : isUser
-            ? Colors.blue[100]
-            : Colors.green[100];
+        : isFirstIntro
+            ? Colors.orange[100]
+            : isUser
+                ? Colors.blue[100]
+                : Colors.green[100];
 
     return Align(
       alignment: alignment,
@@ -120,9 +140,18 @@ class _ChatScreenState extends State<ChatScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: color,
+                border: isFirstIntro
+                    ? Border.all(color: Colors.orange, width: 2)
+                    : null,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Text(message["content"] ?? ''),
+              child: Text(
+                message["content"] ?? '',
+                style: TextStyle(
+                  fontStyle: isFirstIntro ? FontStyle.italic : FontStyle.normal,
+                  fontWeight: isFirstIntro ? FontWeight.w500 : FontWeight.normal,
+                ),
+              ),
             ),
           ),
           if (isLastAssistant)
@@ -173,6 +202,7 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Expanded(
             child: ListView.builder(
+              controller: _scrollController,
               itemCount: messages.length,
               itemBuilder: (context, index) {
                 return _buildMessage(messages[index], index);
