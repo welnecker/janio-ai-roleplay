@@ -131,26 +131,25 @@ class ApiService {
       return "Erro ao semear memórias fixas: $e";
     }
   }
-}
 
-/// ✅ Semeia a memória inicial e retorna a mensagem para colar no chat
-Future<Map<String, dynamic>> semeiaMemoriaInicial(String personagem) async {
-  final url = Uri.parse('$baseUrl/memoria_inicial/');
-  try {
-    final response = await http.post(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"personagem": personagem}),
-    );
-    if (response.statusCode == 200) {
-      return jsonDecode(utf8.decode(response.bodyBytes));
-    } else {
-      print("Erro ao semear memória inicial: ${response.statusCode}");
+  /// ✅ Nova função: semear memória inicial da aba personagem ou da primeira linha system
+  Future<Map<String, dynamic>> semeiaMemoriaInicial(String personagem) async {
+    final url = Uri.parse('$baseUrl/memoria_inicial/');
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"personagem": personagem}),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      } else {
+        print("Erro ao semear memória inicial: ${response.statusCode}");
+        return {"mensagem_inicial": ""};
+      }
+    } catch (e) {
+      print("Erro ao semear memória inicial: $e");
       return {"mensagem_inicial": ""};
     }
-  } catch (e) {
-    print("Erro ao semear memória inicial: $e");
-    return {"mensagem_inicial": ""};
   }
 }
-
