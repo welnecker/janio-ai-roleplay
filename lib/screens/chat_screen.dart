@@ -28,21 +28,26 @@ class _ChatScreenState extends State<ChatScreen> {
     await apiService.semeiaMemoriasFixas(widget.character["nome"]);
   }
 
-  Future<void> _loadInitialMemory() async {
-    final introText = await apiService.getResumo(widget.character["nome"]);
-    if (introText.isNotEmpty) {
-      introMessage = {"role": "system", "content": introText};
-      messages.add(introMessage!);
-    }
+ Future<void> _loadInitialMemory() async {
+  // Primeiro: chama o backend para obter e semear a memória inicial
+  final memoriaResp = await apiService.semeiaMemoriaInicial(widget.character["nome"]);
+  final mensagemInicial = memoriaResp["mensagem_inicial"];
 
-    final previous = await apiService.getMensagens(widget.character["nome"]);
-    setState(() {
-      messages.addAll(previous.map<Map<String, String>>((msg) => {
-        "role": msg["role"] ?? 'assistant',
-        "content": msg["content"] ?? ''
-      }).toList());
-    });
+  // Se houver mensagem inicial, exibe na tela como assistant
+  if (mensagemInicial != null && mensagemInicial.toString().trim().isNotEmpty) {
+    messages.add({"role": "assistant", "content": mensagemInicial});
   }
+
+  // Segundo: busca mensagens anteriores já salvas (user + assistant)
+  final previous = await apiService.getMensagens(widget.character["nome"]);
+  setState(() {
+    messages.addAll(previous.map<Map<String, String>>((msg) => {
+      "role": msg["role"] ?? 'assistant',
+      "content": msg["content"] ?? ''
+    }).toList());
+  });
+}
+
 
   Future<void> _sendMessage({bool regenerar = false}) async {
     String userText;
