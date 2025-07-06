@@ -4,11 +4,10 @@ import 'package:http/http.dart' as http;
 class ApiService {
   final String baseUrl = "https://web-production-76f08.up.railway.app";
 
-  /// ✅ Envia mensagem ao backend, com suporte a regeneração de resposta
   Future<Map<String, dynamic>> sendMessage({
     required String mensagem,
     required String personagem,
-    bool regenerar = false, // ✅ Novo parâmetro com valor padrão
+    bool regenerar = false,
   }) async {
     final url = Uri.parse("$baseUrl/chat/");
     try {
@@ -18,7 +17,7 @@ class ApiService {
         body: jsonEncode({
           "user_input": mensagem,
           "personagem": personagem,
-          "regenerar": regenerar, // ✅ Envia para o backend
+          "regenerar": regenerar,
         }),
       );
 
@@ -34,7 +33,6 @@ class ApiService {
     }
   }
 
-  /// Carrega a introdução com resumo da personagem
   Future<String> getResumo(String personagem) async {
     final url = Uri.parse('$baseUrl/resumo/?personagem=$personagem');
     try {
@@ -52,7 +50,6 @@ class ApiService {
     }
   }
 
-  /// Recupera mensagens anteriores salvas na planilha
   Future<List<Map<String, String>>> getMensagens(String personagem) async {
     final url = Uri.parse('$baseUrl/mensagens/?personagem=$personagem');
     try {
@@ -75,7 +72,6 @@ class ApiService {
     }
   }
 
-  /// ✅ Apaga todas as memórias da personagem no ChromaDB
   Future<String> resetMemorias(String personagem) async {
     final url = Uri.parse('$baseUrl/memorias_clear/');
     try {
@@ -93,6 +89,27 @@ class ApiService {
       }
     } catch (e) {
       return "Erro ao apagar memórias: $e";
+    }
+  }
+
+  /// ✅ Novo método: semear memórias fixas da planilha
+  Future<String> semearMemoriasFixas(String personagem) async {
+    final url = Uri.parse('$baseUrl/memorias_seed_fixas/');
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"personagem": personagem}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        return data["status"] ?? "Memórias fixas semeadas.";
+      } else {
+        return "Erro ao semear memórias fixas: ${response.statusCode}";
+      }
+    } catch (e) {
+      return "Erro ao semear memórias fixas: $e";
     }
   }
 }
