@@ -1,4 +1,4 @@
-import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:janio_ai_roleplay/services/api_service.dart';
@@ -99,7 +99,10 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       child: Text(
         content,
-        style: GoogleFonts.roboto(fontSize: 16),
+        style: GoogleFonts.roboto(
+          fontSize: 16,
+          color: Colors.white,
+        ),
       ),
     );
   }
@@ -147,27 +150,15 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Stack(
         children: [
-          // Fundo com blur e fade
+          // Fundo sem blur
           Positioned.fill(
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: FadeInImage.assetNetwork(
-                    placeholder: 'assets/placeholder.jpg',
-                    image: imagemFundoAtual,
-                    fit: BoxFit.cover,
-                    fadeInDuration: const Duration(milliseconds: 500),
-                    imageErrorBuilder: (_, __, ___) =>
-                        Container(color: Colors.black12),
-                  ),
-                ),
-                Positioned.fill(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 6.0, sigmaY: 6.0),
-                    child: Container(color: Colors.black.withOpacity(0.2)),
-                  ),
-                ),
-              ],
+            child: FadeInImage.assetNetwork(
+              placeholder: 'assets/placeholder.jpg',
+              image: imagemFundoAtual,
+              fit: BoxFit.cover,
+              fadeInDuration: const Duration(milliseconds: 500),
+              imageErrorBuilder: (_, __, ___) =>
+                  Container(color: Colors.black12),
             ),
           ),
 
@@ -189,6 +180,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     Expanded(
                       child: TextField(
                         controller: _controller,
+                        style: const TextStyle(color: Colors.black),
                         decoration: const InputDecoration(
                           hintText: "Digite sua mensagem...",
                           filled: true,
