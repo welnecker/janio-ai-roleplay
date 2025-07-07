@@ -1,8 +1,6 @@
 name: janio_ai_roleplay
 description: Janio AI Roleplay App
-
 publish_to: 'none'
-
 version: 1.0.0+1
 
 environment:
@@ -12,12 +10,9 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2
-  http: ^1.1.0         # ✅ atualizado
-  google_fonts: ^6.2.1 # ✅ mantido
-
-dependencies:
-  url_launcher: ^6.2.4
-
+  http: ^1.1.0
+  google_fonts: ^6.2.1
+  url_launcher: ^6.2.4  # ✅ agora corretamente incluído aqui
 
 dev_dependencies:
   flutter_test:
