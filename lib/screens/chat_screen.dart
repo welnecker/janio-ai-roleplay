@@ -22,19 +22,19 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ApiService apiService = ApiService();
   final List<Map<String, String>> mensagens = [];
+
   int contador = 0;
-  String imagemFundoAtual = "";
   int nivel = 0;
+  String imagemFundoAtual = "";
 
   @override
   void initState() {
     super.initState();
     carregarMensagens();
-    carregarImagemFundo();
   }
 
   void carregarImagemFundo() {
-    int indice = (contador ~/ 10) + 1;
+    int indice = (nivel + 1); // fundo1, fundo2, ...
     setState(() {
       imagemFundoAtual =
           'https://raw.githubusercontent.com/welnecker/roleplay_imagens/main/${widget.personagem}_fundo$indice.jpeg';
@@ -69,21 +69,32 @@ class _ChatScreenState extends State<ChatScreen> {
       mensagens.add({'role': 'assistant', 'content': resposta['resposta']});
       contador += 1;
       nivel = resposta['nivel'] ?? (contador ~/ 5);
-      if (contador % 10 == 0) carregarImagemFundo();
+      carregarImagemFundo();
     });
+  }
+
+  Widget _buildNivelCoração() {
+    int progresso = contador % 5;
+    return Row(
+      children: List.generate(
+        5,
+        (index) => Icon(
+          Icons.favorite,
+          color: index < progresso ? Colors.redAccent : Colors.white24,
+          size: 20,
+        ),
+      ),
+    );
   }
 
   Widget _buildMessage(Map<String, String> msg) {
     final role = msg['role'];
     final content = msg['content'] ?? '';
     final isUser = role == 'user';
-    final isSystem = role == 'system';
 
-    final color = isSystem
-        ? Colors.white.withOpacity(0.5)
-        : isUser
-            ? Colors.blue.withOpacity(0.4)
-            : Colors.green.withOpacity(0.4);
+    final color = isUser
+        ? Colors.blue.withOpacity(0.4)
+        : Colors.green.withOpacity(0.3);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -94,9 +105,9 @@ class _ChatScreenState extends State<ChatScreen> {
         boxShadow: [
           BoxShadow(
             color: Colors.black26,
+            blurRadius: 4,
             offset: Offset(2, 2),
-            blurRadius: 6,
-          ),
+          )
         ],
       ),
       child: Text(
@@ -105,23 +116,6 @@ class _ChatScreenState extends State<ChatScreen> {
           fontSize: 16,
           color: Colors.white,
         ),
-      ),
-    );
-  }
-
-  Widget _buildNivelDesejo() {
-    return Positioned(
-      top: kToolbarHeight + 8,
-      right: 16,
-      child: Row(
-        children: List.generate(5, (i) {
-          bool ativo = i < (nivel % 5);
-          return AnimatedOpacity(
-            opacity: ativo ? 1.0 : 0.2,
-            duration: Duration(milliseconds: 300),
-            child: Icon(Icons.favorite, color: Colors.pinkAccent, size: 28),
-          );
-        }),
       ),
     );
   }
@@ -136,6 +130,7 @@ class _ChatScreenState extends State<ChatScreen> {
         backgroundColor: Colors.black.withOpacity(0.2),
         elevation: 0,
         actions: [
+          _buildNivelCoração(),
           IconButton(
             icon: const Icon(Icons.visibility),
             tooltip: "Ver imagem de fundo",
@@ -152,7 +147,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           child: Image.network(
                             imagemFundoAtual,
                             fit: BoxFit.contain,
-                            errorBuilder: (context, _, __) => const Text(
+                            errorBuilder: (_, __, ___) => const Text(
                               'Erro ao carregar imagem',
                               style: TextStyle(color: Colors.white),
                             ),
@@ -175,10 +170,12 @@ class _ChatScreenState extends State<ChatScreen> {
               image: imagemFundoAtual,
               fit: BoxFit.cover,
               fadeInDuration: const Duration(milliseconds: 500),
-              imageErrorBuilder: (_, __, ___) => Container(color: Colors.black12),
+              imageErrorBuilder: (_, __, ___) =>
+                  Container(color: Colors.black12),
             ),
           ),
-          _buildNivelDesejo(),
+
+          // Mensagens + input
           Column(
             children: [
               const SizedBox(height: kToolbarHeight + 16),
