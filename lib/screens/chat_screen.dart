@@ -91,7 +91,6 @@ class _ChatScreenState extends State<ChatScreen> {
         isLoading = false;
         _scrollToBottom();
       });
-
     } else {
       userText = _controller.text;
       if (userText.isEmpty) return;
@@ -181,30 +180,29 @@ class _ChatScreenState extends State<ChatScreen> {
         title: Text(widget.character["nome"]),
         actions: [
           IconButton(
-  icon: const Icon(Icons.visibility),
-  tooltip: "Ver imagem de fundo",
-  onPressed: () {
-    showDialog(
-      context: context,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: GestureDetector(
-          onTap: () => Navigator.of(context).pop(),
-          child: InteractiveViewer(
-            child: Image.network(
-              imagemFundoAtual,
-              fit: BoxFit.contain,
-              errorBuilder: (context, _, __) => const Center(
-                child: Text('Erro ao carregar imagem'),
-              ),
-            ),
+            icon: const Icon(Icons.visibility),
+            tooltip: "Ver imagem de fundo",
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (_) => Dialog(
+                  backgroundColor: Colors.transparent,
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: InteractiveViewer(
+                      child: Image.network(
+                        imagemFundoAtual,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, _, __) => const Center(
+                          child: Text('Erro ao carregar imagem'),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
-        ),
-      ),
-    );
-  },
-),
-
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: "Recarregar histórico",
@@ -256,8 +254,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       child: DropdownButton<String>(
                         value: modoSelecionado,
                         items: modosFala.map((value) => DropdownMenuItem(
-                          value: value, child: Text("Modo: $value"))
-                        ).toList(),
+                          value: value, child: Text("Modo: $value"))).toList(),
                         onChanged: (value) => setState(() => modoSelecionado = value!),
                       ),
                     ),
@@ -265,8 +262,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       child: DropdownButton<String>(
                         value: estadoSelecionado,
                         items: estadosEmocionais.map((value) => DropdownMenuItem(
-                          value: value, child: Text("Estado: $value"))
-                        ).toList(),
+                          value: value, child: Text("Estado: $value"))).toList(),
                         onChanged: (value) => setState(() => estadoSelecionado = value!),
                       ),
                     ),
@@ -299,8 +295,8 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                       ),
                     ),
-                    Button(
-                      : const (s.send),
+                    IconButton(
+                      icon: const Icon(Icons.send),
                       onPressed: () => _sendMessage(),
                     ),
                   ],
