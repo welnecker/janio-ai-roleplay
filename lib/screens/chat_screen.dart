@@ -78,9 +78,9 @@ class _ChatScreenState extends State<ChatScreen>
 
     final resposta = await apiService.sendMessage(
       mensagem: texto,
-      modo: widget.modo,
+      modo: "",
+      estado: "",
       personagem: widget.personagem,
-      estado: widget.estado,
     );
 
     setState(() {
