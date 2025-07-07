@@ -1,7 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'chat_screen.dart';
-import 'package:http/http.dart' as http;
+import 'package:janio_ai_roleplay/screens/chat_screen.dart';
+import 'package:janio_ai_roleplay/services/api_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,8 +10,14 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final ApiService apiService = ApiService();
+  String modoSelecionado = 'Normal';
+  String estadoSelecionado = 'Neutro';
+  String personagemSelecionado = '';
   List<Map<String, dynamic>> personagens = [];
-  bool carregando = true;
+
+  final List<String> modos = ['Normal', 'Romântico', 'Atrevido', 'Misterioso'];
+  final List<String> estados = ['Neutro', 'Feliz', 'Triste', 'Raivoso', 'Excitado'];
 
   @override
   void initState() {
@@ -21,70 +26,89 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> carregarPersonagens() async {
-    final url = Uri.parse("https://web-production-76f08.up.railway.app/personagens/");
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final decoded = utf8.decode(response.bodyBytes);
-        final List dados = jsonDecode(decoded);
-        setState(() {
-          personagens = dados.cast<Map<String, dynamic>>();
-          carregando = false;
-        });
-      } else {
-        setState(() => carregando = false);
-        print("Erro: status ${response.statusCode}");
-      }
-    } catch (e) {
-      print("Erro ao carregar personagens: $e");
-      setState(() => carregando = false);
-    }
+    final lista = await apiService.getPersonagens();
+    setState(() {
+      personagens = lista;
+    });
+  }
+
+  void abrirChat(String personagem) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(
+          personagem: personagem,
+          modo: modoSelecionado,
+          estado: estadoSelecionado,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (carregando) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    if (personagens.isEmpty) {
-      return const Scaffold(
-        body: Center(child: Text("Nenhum personagem encontrado.")),
-      );
-    }
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Escolha seu personagem'),
-      ),
-      body: ListView.builder(
-        itemCount: personagens.length,
-        itemBuilder: (context, index) {
-          final personagem = personagens[index];
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundImage: NetworkImage(personagem['foto']),
-              ),
-              title: Text(personagem['nome']),
-              subtitle: Text(personagem['descricao']),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ChatScreen(character: {
-                      "nome": personagem['nome'],
-                      "descricao": personagem['descricao'],
-                    }),
+      appBar: AppBar(title: const Text("Escolha o personagem")),
+      body: Column(
+        children: [
+          // Menus suspensos
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                // Modo
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: modoSelecionado,
+                    items: modos.map((m) {
+                      return DropdownMenuItem(value: m, child: Text(m));
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) setState(() => modoSelecionado = value);
+                    },
+                    decoration: const InputDecoration(labelText: "Modo"),
                   ),
-                );
-              },
+                ),
+                const SizedBox(width: 8),
+                // Estado
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: estadoSelecionado,
+                    items: estados.map((e) {
+                      return DropdownMenuItem(value: e, child: Text(e));
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) setState(() => estadoSelecionado = value);
+                    },
+                    decoration: const InputDecoration(labelText: "Estado"),
+                  ),
+                ),
+              ],
             ),
-          );
-        },
+          ),
+          const SizedBox(height: 10),
+
+          // Lista de personagens
+          Expanded(
+            child: personagens.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : ListView.builder(
+                    itemCount: personagens.length,
+                    itemBuilder: (_, i) {
+                      final p = personagens[i];
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundImage: NetworkImage(p['foto']),
+                          backgroundColor: Colors.grey.shade300,
+                        ),
+                        title: Text(p['nome']),
+                        subtitle: Text(p['descricao'] ?? ''),
+                        onTap: () => abrirChat(p['nome']),
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }
