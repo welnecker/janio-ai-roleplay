@@ -8,6 +8,8 @@ class ApiService {
     required String mensagem,
     required String personagem,
     bool regenerar = false,
+    String modo = "Normal",
+    String estado = "Neutro",
   }) async {
     final url = Uri.parse("$baseUrl/chat/");
     try {
@@ -18,6 +20,8 @@ class ApiService {
           "user_input": mensagem,
           "personagem": personagem,
           "regenerar": regenerar,
+          "modo": modo,
+          "estado": estado,
         }),
       );
 
@@ -92,7 +96,6 @@ class ApiService {
     }
   }
 
-  /// ✅ Semear memórias principais da aba "personagens"
   Future<String> semeiaMemoriasPrincipais(String personagem) async {
     final url = Uri.parse('$baseUrl/memorias_seed/');
     try {
@@ -112,7 +115,6 @@ class ApiService {
     }
   }
 
-  /// ✅ Semear memórias fixas da aba "memorias_fixas"
   Future<String> semeiaMemoriasFixas(String personagem) async {
     final url = Uri.parse('$baseUrl/memorias_seed_fixas/');
     try {
@@ -132,7 +134,6 @@ class ApiService {
     }
   }
 
-  /// ✅ Nova função: semear memória inicial da aba personagem ou da primeira linha system
   Future<Map<String, dynamic>> semeiaMemoriaInicial(String personagem) async {
     final url = Uri.parse('$baseUrl/memoria_inicial/');
     try {
