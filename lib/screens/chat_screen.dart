@@ -17,6 +17,12 @@ class _ChatScreenState extends State<ChatScreen> {
   bool isLoading = false;
   bool memoriaInicialColada = false;
 
+  String modoSelecionado = 'Normal';
+  String estadoSelecionado = 'Neutro';
+
+  final List<String> modosFala = ['Normal', 'Sedutor', 'Engraçado', 'Agressivo', 'Reflexivo'];
+  final List<String> estadosEmocionais = ['Neutro', 'Excitado', 'Triste', 'Confiante', 'Irritado'];
+
   @override
   void initState() {
     super.initState();
@@ -64,11 +70,13 @@ class _ChatScreenState extends State<ChatScreen> {
         mensagem: userText,
         personagem: widget.character["nome"],
         regenerar: true,
+        modo: modoSelecionado,
+        estado: estadoSelecionado,
       );
 
       final aiText = response['resposta'] ?? 'Erro na resposta';
       setState(() {
-        messages.removeLast(); // remove última resposta da IA
+        messages.removeLast();
         messages.add({"role": "assistant", "content": aiText});
         isLoading = false;
         _scrollToBottom();
@@ -86,6 +94,8 @@ class _ChatScreenState extends State<ChatScreen> {
       final response = await apiService.sendMessage(
         mensagem: userText,
         personagem: widget.character["nome"],
+        modo: modoSelecionado,
+        estado: estadoSelecionado,
       );
 
       final aiText = response['resposta'] ?? 'Erro na resposta';
@@ -187,6 +197,35 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: DropdownButton<String>(
+                    value: modoSelecionado,
+                    items: modosFala.map((value) {
+                      return DropdownMenuItem(value: value, child: Text("Modo: $value"));
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() => modoSelecionado = value!);
+                    },
+                  ),
+                ),
+                Expanded(
+                  child: DropdownButton<String>(
+                    value: estadoSelecionado,
+                    items: estadosEmocionais.map((value) {
+                      return DropdownMenuItem(value: value, child: Text("Estado: $value"));
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() => estadoSelecionado = value!);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
