@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'chat_screen.dart';
+import 'package:http/http.dart' as http;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
