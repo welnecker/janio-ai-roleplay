@@ -1,174 +1,107 @@
+
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:janio_ai_roleplay/services/api_service.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class ChatScreen extends StatefulWidget {
-  final Map<String, dynamic> character;
-  const ChatScreen({super.key, required this.character});
+  final String personagem;
+  final String modo;
+  final String estado;
+
+  const ChatScreen({
+    Key? key,
+    required this.personagem,
+    required this.modo,
+    required this.estado,
+  }) : super(key: key);
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  final apiService = ApiService();
   final TextEditingController _controller = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
-  List<Map<String, String>> messages = [];
-  bool isLoading = false;
-  bool memoriaInicialColada = false;
-  int contadorInteracoes = 0;
-
-  String modoSelecionado = 'Normal';
-  String estadoSelecionado = 'Neutro';
-  final List<String> modosFala = ['Normal', 'Sedutor', 'Engraçado', 'Agressivo', 'Reflexivo'];
-  final List<String> estadosEmocionais = ['Neutro', 'Excitado', 'Triste', 'Confiante', 'Irritado'];
-
-  String get imagemFundoAtual {
-    final numero = (contadorInteracoes ~/ 10) + 1;
-    final nome = widget.character["nome"];
-    return 'https://raw.githubusercontent.com/welnecker/roleplay_imagens/main/${nome}_fundo$numero.jpeg';
-  }
+  final ApiService apiService = ApiService();
+  final List<Map<String, String>> mensagens = [];
+  int contador = 0;
+  String imagemFundoAtual = "";
 
   @override
   void initState() {
     super.initState();
-    _semeiaMemorias();
-    _loadInitialMemory();
+    carregarMensagens();
+    carregarImagemFundo();
   }
 
-  Future<void> _semeiaMemorias() async {
-    await apiService.semeiaMemoriasPrincipais(widget.character["nome"]);
-    await apiService.semeiaMemoriasFixas(widget.character["nome"]);
-  }
-
-  Future<void> _loadInitialMemory() async {
-    final memoriaResp = await apiService.semeiaMemoriaInicial(widget.character["nome"]);
-    final mensagemInicial = memoriaResp["mensagem_inicial"];
-
-    if (mensagemInicial != null && mensagemInicial.toString().trim().isNotEmpty && !memoriaInicialColada) {
-      messages.add({"role": "assistant", "content": mensagemInicial});
-      memoriaInicialColada = true;
-      contadorInteracoes++;
-    }
-
-    final previous = await apiService.getMensagens(widget.character["nome"]);
+  void carregarImagemFundo() {
+    int indice = (contador ~/ 10) + 1;
     setState(() {
-      messages.addAll(previous.map<Map<String, String>>((msg) {
-        contadorInteracoes++;
-        return {
-          "role": msg["role"] ?? 'assistant',
-          "content": msg["content"] ?? ''
-        };
-      }));
-      _scrollToBottom();
+      imagemFundoAtual =
+          'https://raw.githubusercontent.com/welnecker/roleplay_imagens/main/${widget.personagem}_fundo$indice.jpeg';
     });
   }
 
-  Future<void> _sendMessage({bool regenerar = false}) async {
-    String userText;
+  Future<void> carregarMensagens() async {
+    final msgs = await apiService.getMensagens(widget.personagem);
+    setState(() {
+      mensagens.addAll(msgs);
+      contador = mensagens.where((m) => m['role'] == 'user').length;
+      carregarImagemFundo();
+    });
+  }
 
-    if (regenerar) {
-      final lastUser = messages.lastWhere((m) => m["role"] == "user", orElse: () => {});
-      userText = lastUser["content"] ?? '';
-      if (userText.isEmpty) return;
-
-      setState(() => isLoading = true);
-
-      final response = await apiService.sendMessage(
-        mensagem: userText,
-        personagem: widget.character["nome"],
-        regenerar: true,
-        modo: modoSelecionado,
-        estado: estadoSelecionado,
-      );
-
-      final aiText = response['resposta'] ?? 'Erro na resposta';
-      setState(() {
-        messages.removeLast();
-        messages.add({"role": "assistant", "content": aiText});
-        contadorInteracoes++;
-        isLoading = false;
-        _scrollToBottom();
-      });
-    } else {
-      userText = _controller.text;
-      if (userText.isEmpty) return;
+  Future<void> enviarMensagem(String texto) async {
+    if (texto.trim().isEmpty) return;
+    setState(() {
+      mensagens.add({'role': 'user', 'content': texto});
       _controller.clear();
-      setState(() {
-        messages.add({"role": "user", "content": userText});
-        contadorInteracoes++;
-        isLoading = true;
-      });
+    });
 
-      final response = await apiService.sendMessage(
-        mensagem: userText,
-        personagem: widget.character["nome"],
-        modo: modoSelecionado,
-        estado: estadoSelecionado,
-      );
+    final resposta = await apiService.sendMessage(
+      mensagem: texto,
+      score: 0,
+      modo: widget.modo,
+      personagem: widget.personagem,
+      estado: widget.estado,
+    );
 
-      final aiText = response['resposta'] ?? 'Erro na resposta';
-      setState(() {
-        messages.add({"role": "assistant", "content": aiText});
-        contadorInteracoes++;
-        isLoading = false;
-        _scrollToBottom();
-      });
-    }
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeOut,
-        );
-      }
+    setState(() {
+      mensagens.add({'role': 'assistant', 'content': resposta['resposta']});
+      contador += 1;
+      if (contador % 10 == 0) carregarImagemFundo();
     });
   }
 
-  Widget _buildMessage(Map<String, String> message, int index) {
-    final isUser = message["role"] == "user";
-    final isSystem = message["role"] == "system";
-    final isLastAssistant = message["role"] == "assistant" &&
-        index == messages.lastIndexWhere((m) => m["role"] == "assistant");
+  Widget _buildMessage(Map<String, String> msg) {
+    final role = msg['role'];
+    final content = msg['content'] ?? '';
+    final isUser = role == 'user';
+    final isSystem = role == 'system';
 
-    final alignment = isUser ? Alignment.centerRight : Alignment.centerLeft;
     final color = isSystem
-        ? Colors.grey.withOpacity(0.7)
+        ? Colors.white.withOpacity(0.5)
         : isUser
-            ? Colors.blue.withOpacity(0.7)
-            : Colors.green.withOpacity(0.7);
+            ? Colors.blue.withOpacity(0.4)
+            : Colors.green.withOpacity(0.4);
 
-    return Align(
-      alignment: alignment,
-      child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        children: [
-          Flexible(
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                message["content"] ?? '',
-                style: const TextStyle(color: Colors.black),
-              ),
-            ),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            offset: Offset(2, 2),
+            blurRadius: 6,
           ),
-          if (isLastAssistant)
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: "Regenerar resposta",
-              onPressed: () => _sendMessage(regenerar: true),
-            ),
         ],
+      ),
+      child: Text(
+        content,
+        style: GoogleFonts.roboto(fontSize: 16),
       ),
     );
   }
@@ -176,25 +109,34 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: Text(widget.character["nome"]),
+        title: Text(widget.personagem),
+        backgroundColor: Colors.black.withOpacity(0.2),
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.visibility),
             tooltip: "Ver imagem de fundo",
             onPressed: () {
-              showDialog(
-                context: context,
-                builder: (_) => Dialog(
-                  backgroundColor: Colors.transparent,
-                  child: GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: InteractiveViewer(
-                      child: Image.network(
-                        imagemFundoAtual,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, _, __) => const Center(
-                          child: Text('Erro ao carregar imagem'),
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  fullscreenDialog: true,
+                  builder: (_) => Scaffold(
+                    backgroundColor: Colors.black,
+                    body: GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Center(
+                        child: InteractiveViewer(
+                          child: Image.network(
+                            imagemFundoAtual,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, _, __) => const Text(
+                              'Erro ao carregar imagem',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -202,87 +144,48 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               );
             },
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: "Recarregar histórico",
-            onPressed: () async {
-              setState(() {
-                messages.clear();
-                memoriaInicialColada = false;
-                contadorInteracoes = 0;
-              });
-              await _loadInitialMemory();
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.restart_alt),
-            tooltip: "Resetar memórias",
-            onPressed: () async {
-              final result = await apiService.resetMemorias(widget.character["nome"]);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(result)),
-                );
-                setState(() {
-                  messages.clear();
-                  memoriaInicialColada = false;
-                  contadorInteracoes = 0;
-                });
-                await _loadInitialMemory();
-              }
-            },
-          ),
+          )
         ],
       ),
       body: Stack(
         children: [
+          // Fundo com blur e fade
           Positioned.fill(
-            child: Image.network(
-              imagemFundoAtual,
-              fit: BoxFit.cover,
-              errorBuilder: (context, _, __) => Container(color: Colors.black12),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: FadeInImage.assetNetwork(
+                    placeholder: 'assets/placeholder.jpg',
+                    image: imagemFundoAtual,
+                    fit: BoxFit.cover,
+                    fadeInDuration: const Duration(milliseconds: 500),
+                    imageErrorBuilder: (_, __, ___) =>
+                        Container(color: Colors.black12),
+                  ),
+                ),
+                Positioned.fill(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 6.0, sigmaY: 6.0),
+                    child: Container(color: Colors.black.withOpacity(0.2)),
+                  ),
+                ),
+              ],
             ),
           ),
+
+          // Mensagens e input
           Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButton<String>(
-                        value: modoSelecionado,
-                        items: modosFala.map((value) => DropdownMenuItem(
-                          value: value, child: Text("Modo: $value"))).toList(),
-                        onChanged: (value) => setState(() => modoSelecionado = value!),
-                      ),
-                    ),
-                    Expanded(
-                      child: DropdownButton<String>(
-                        value: estadoSelecionado,
-                        items: estadosEmocionais.map((value) => DropdownMenuItem(
-                          value: value, child: Text("Estado: $value"))).toList(),
-                        onChanged: (value) => setState(() => estadoSelecionado = value!),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              const SizedBox(height: kToolbarHeight + 16),
               Expanded(
                 child: ListView.builder(
-                  controller: _scrollController,
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) => _buildMessage(messages[index], index),
+                  padding: const EdgeInsets.only(bottom: 80),
+                  itemCount: mensagens.length,
+                  itemBuilder: (_, i) => _buildMessage(mensagens[i]),
                 ),
               ),
-              if (isLoading)
-                const Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: CircularProgressIndicator(),
-                ),
               Padding(
-                padding: const EdgeInsets.all(8.0),
+                padding: const EdgeInsets.all(12),
                 child: Row(
                   children: [
                     Expanded(
@@ -292,12 +195,14 @@ class _ChatScreenState extends State<ChatScreen> {
                           hintText: "Digite sua mensagem...",
                           filled: true,
                           fillColor: Colors.white70,
+                          border: OutlineInputBorder(),
                         ),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.send),
-                      onPressed: () => _sendMessage(),
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      onPressed: () => enviarMensagem(_controller.text),
+                      child: const Icon(Icons.send),
                     ),
                   ],
                 ),
