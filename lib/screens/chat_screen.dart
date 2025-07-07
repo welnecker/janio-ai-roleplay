@@ -1,3 +1,5 @@
+// chat_screen.dart atualizado com indicador de nível (coração animado)
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:janio_ai_roleplay/services/api_service.dart';
@@ -18,23 +20,39 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _controller = TextEditingController();
   final ApiService apiService = ApiService();
   final List<Map<String, String>> mensagens = [];
-
   int contador = 0;
   int nivel = 0;
   String imagemFundoAtual = "";
+  late AnimationController _animController;
+  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.5).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeInOut),
+    );
     carregarMensagens();
+    carregarImagemFundo();
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
   }
 
   void carregarImagemFundo() {
-    int indice = (nivel + 1); // fundo1, fundo2, ...
+    int indice = (contador ~/ 10) + 1;
     setState(() {
       imagemFundoAtual =
           'https://raw.githubusercontent.com/welnecker/roleplay_imagens/main/${widget.personagem}_fundo$indice.jpeg';
@@ -68,33 +86,26 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() {
       mensagens.add({'role': 'assistant', 'content': resposta['resposta']});
       contador += 1;
-      nivel = resposta['nivel'] ?? (contador ~/ 5);
-      carregarImagemFundo();
+      int novoNivel = resposta['nivel'] ?? (contador ~/ 5);
+      if (novoNivel > nivel) {
+        _animController.forward(from: 0.0);
+      }
+      nivel = novoNivel;
+      if (contador % 10 == 0) carregarImagemFundo();
     });
-  }
-
-  Widget _buildNivelCoração() {
-    int progresso = contador % 5;
-    return Row(
-      children: List.generate(
-        5,
-        (index) => Icon(
-          Icons.favorite,
-          color: index < progresso ? Colors.redAccent : Colors.white24,
-          size: 20,
-        ),
-      ),
-    );
   }
 
   Widget _buildMessage(Map<String, String> msg) {
     final role = msg['role'];
     final content = msg['content'] ?? '';
     final isUser = role == 'user';
+    final isSystem = role == 'system';
 
-    final color = isUser
-        ? Colors.blue.withOpacity(0.4)
-        : Colors.green.withOpacity(0.3);
+    final color = isSystem
+        ? Colors.white.withOpacity(0.5)
+        : isUser
+            ? Colors.blue.withOpacity(0.4)
+            : Colors.green.withOpacity(0.4);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -105,9 +116,9 @@ class _ChatScreenState extends State<ChatScreen> {
         boxShadow: [
           BoxShadow(
             color: Colors.black26,
-            blurRadius: 4,
             offset: Offset(2, 2),
-          )
+            blurRadius: 6,
+          ),
         ],
       ),
       child: Text(
@@ -130,7 +141,30 @@ class _ChatScreenState extends State<ChatScreen> {
         backgroundColor: Colors.black.withOpacity(0.2),
         elevation: 0,
         actions: [
-          _buildNivelCoração(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: ScaleTransition(
+              scale: _scaleAnimation,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  const Icon(Icons.favorite, color: Colors.pinkAccent, size: 28),
+                  Positioned(
+                    top: 2,
+                    right: 0,
+                    child: Text(
+                      nivel.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.visibility),
             tooltip: "Ver imagem de fundo",
@@ -147,7 +181,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           child: Image.network(
                             imagemFundoAtual,
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const Text(
+                            errorBuilder: (context, _, __) => const Text(
                               'Erro ao carregar imagem',
                               style: TextStyle(color: Colors.white),
                             ),
@@ -164,6 +198,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Stack(
         children: [
+          // Fundo sem blur
           Positioned.fill(
             child: FadeInImage.assetNetwork(
               placeholder: 'assets/placeholder.jpg',
@@ -175,7 +210,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
 
-          // Mensagens + input
+          // Mensagens e input
           Column(
             children: [
               const SizedBox(height: kToolbarHeight + 16),
