@@ -26,7 +26,11 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(utf8.decode(response.bodyBytes));
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        return {
+          "resposta": decoded["resposta"] ?? "",
+          "nivel": decoded["nivel"] ?? 0,
+        };
       } else {
         print("Erro no envio da mensagem: ${response.statusCode}");
         return {};
