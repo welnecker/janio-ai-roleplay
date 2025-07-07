@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:janio_ai_roleplay/services/api_service.dart';
@@ -25,6 +24,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<Map<String, String>> mensagens = [];
   int contador = 0;
   String imagemFundoAtual = "";
+  int nivel = 0;
 
   @override
   void initState() {
@@ -46,6 +46,7 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() {
       mensagens.addAll(msgs);
       contador = mensagens.where((m) => m['role'] == 'user').length;
+      nivel = contador ~/ 5;
       carregarImagemFundo();
     });
   }
@@ -67,6 +68,7 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() {
       mensagens.add({'role': 'assistant', 'content': resposta['resposta']});
       contador += 1;
+      nivel = resposta['nivel'] ?? (contador ~/ 5);
       if (contador % 10 == 0) carregarImagemFundo();
     });
   }
@@ -103,6 +105,23 @@ class _ChatScreenState extends State<ChatScreen> {
           fontSize: 16,
           color: Colors.white,
         ),
+      ),
+    );
+  }
+
+  Widget _buildNivelDesejo() {
+    return Positioned(
+      top: kToolbarHeight + 8,
+      right: 16,
+      child: Row(
+        children: List.generate(5, (i) {
+          bool ativo = i < (nivel % 5);
+          return AnimatedOpacity(
+            opacity: ativo ? 1.0 : 0.2,
+            duration: Duration(milliseconds: 300),
+            child: Icon(Icons.favorite, color: Colors.pinkAccent, size: 28),
+          );
+        }),
       ),
     );
   }
@@ -150,19 +169,16 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Stack(
         children: [
-          // Fundo sem blur
           Positioned.fill(
             child: FadeInImage.assetNetwork(
               placeholder: 'assets/placeholder.jpg',
               image: imagemFundoAtual,
               fit: BoxFit.cover,
               fadeInDuration: const Duration(milliseconds: 500),
-              imageErrorBuilder: (_, __, ___) =>
-                  Container(color: Colors.black12),
+              imageErrorBuilder: (_, __, ___) => Container(color: Colors.black12),
             ),
           ),
-
-          // Mensagens e input
+          _buildNivelDesejo(),
           Column(
             children: [
               const SizedBox(height: kToolbarHeight + 16),
