@@ -1,4 +1,3 @@
-
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -60,7 +59,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
     final resposta = await apiService.sendMessage(
       mensagem: texto,
-      score: 0,
       modo: widget.modo,
       personagem: widget.personagem,
       estado: widget.estado,
