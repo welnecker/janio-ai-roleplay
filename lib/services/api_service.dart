@@ -8,8 +8,6 @@ class ApiService {
     required String mensagem,
     required String personagem,
     bool regenerar = false,
-    String modo = "Normal",
-    String estado = "Neutro",
   }) async {
     final url = Uri.parse("$baseUrl/chat/");
     try {
@@ -20,8 +18,6 @@ class ApiService {
           "user_input": mensagem,
           "personagem": personagem,
           "regenerar": regenerar,
-          "modo": modo,
-          "estado": estado,
         }),
       );
 
@@ -41,19 +37,19 @@ class ApiService {
     }
   }
 
-  Future<String> getResumo(String personagem) async {
-    final url = Uri.parse('$baseUrl/resumo/?personagem=$personagem');
+  Future<String> getIntro(String personagem) async {
+    final url = Uri.parse('$baseUrl/intro/?personagem=$personagem');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
-        return data['resumo'] ?? '';
+        return data['intro'] ?? '';
       } else {
-        print("Erro ao carregar resumo: ${response.statusCode}");
+        print("Erro ao buscar introdução: ${response.statusCode}");
         return '';
       }
     } catch (e) {
-      print("Erro ao carregar resumo: $e");
+      print("Erro ao buscar introdução: $e");
       return '';
     }
   }
@@ -97,44 +93,6 @@ class ApiService {
       }
     } catch (e) {
       return "Erro ao apagar memórias: $e";
-    }
-  }
-
-  Future<String> semeiaMemoriasPrincipais(String personagem) async {
-    final url = Uri.parse('$baseUrl/memorias_seed/');
-    try {
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"personagem": personagem}),
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        return data["status"] ?? "Memórias principais semeadas.";
-      } else {
-        return "Erro ao semear memórias principais: ${response.statusCode}";
-      }
-    } catch (e) {
-      return "Erro ao semear memórias principais: $e";
-    }
-  }
-
-  Future<String> semeiaMemoriasFixas(String personagem) async {
-    final url = Uri.parse('$baseUrl/memorias_seed_fixas/');
-    try {
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"personagem": personagem}),
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        return data["status"] ?? "Memórias fixas semeadas.";
-      } else {
-        return "Erro ao semear memórias fixas: ${response.statusCode}";
-      }
-    } catch (e) {
-      return "Erro ao semear memórias fixas: $e";
     }
   }
 
