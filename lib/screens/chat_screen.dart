@@ -1,77 +1,49 @@
-// chat_screen.dart atualizado: sem modo/estado, integração com backend atualizado e UI com coração animado por nível
-
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:janio_ai_roleplay/services/api_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final String personagem;
-
-  const ChatScreen({
-    Key? key,
-    required this.personagem,
-  }) : super(key: key);
+  const ChatScreen({super.key, required this.personagem});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen>
-    with SingleTickerProviderStateMixin {
-  final TextEditingController _controller = TextEditingController();
+class _ChatScreenState extends State<ChatScreen> {
+  final TextEditingController controller = TextEditingController();
   final ApiService apiService = ApiService();
-  final List<Map<String, String>> mensagens = [];
-  int contador = 0;
-  int nivel = 0;
-  int fillIndex = 0;
-  String imagemFundoAtual = "";
-  late AnimationController _animController;
-  late Animation<double> _scaleAnimation;
+  List<Map<String, dynamic>> mensagens = [];
+  bool carregando = false;
+  int fundoIndex = 1;
+  String get imagemFundoUrl =>
+      "https://raw.githubusercontent.com/welnecker/roleplay_imagens/main/${widget.personagem}_fundo$fundoIndex.jpeg";
 
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.5).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeInOut),
-    );
     carregarMensagens();
-    carregarImagemFundo();
-  }
-
-  @override
-  void dispose() {
-    _animController.dispose();
-    super.dispose();
-  }
-
-  void carregarImagemFundo() {
-    int indice = (contador ~/ 10) + 1;
-    setState(() {
-      imagemFundoAtual =
-          'https://raw.githubusercontent.com/welnecker/roleplay_imagens/main/${widget.personagem}_fundo$indice.jpeg';
-    });
   }
 
   Future<void> carregarMensagens() async {
-    final msgs = await apiService.getMensagens(widget.personagem);
+    final lista = await apiService.getMensagens(widget.personagem);
+    final intro = await apiService.getIntro(widget.personagem);
     setState(() {
-      mensagens.addAll(msgs);
-      contador = mensagens.where((m) => m['role'] == 'user').length;
-      nivel = contador ~/ 5;
-      fillIndex = contador % 5;
-      carregarImagemFundo();
+      mensagens = [
+        {"role": "system", "content": intro},
+        ...lista.reversed
+      ];
+      fundoIndex = ((mensagens.where((m) => m['role'] == 'assistant').length) ~/ 10) + 1;
     });
   }
 
-  Future<void> enviarMensagem(String texto) async {
-    if (texto.trim().isEmpty) return;
+  Future<void> enviarMensagem() async {
+    final texto = controller.text.trim();
+    if (texto.isEmpty) return;
+
     setState(() {
-      mensagens.add({'role': 'user', 'content': texto});
-      _controller.clear();
+      mensagens.add({"role": "user", "content": texto});
+      carregando = true;
+      controller.clear();
     });
 
     final resposta = await apiService.sendMessage(
@@ -80,80 +52,93 @@ class _ChatScreenState extends State<ChatScreen>
     );
 
     setState(() {
-      mensagens.add({'role': 'assistant', 'content': resposta['resposta']});
-      contador += 1;
-      int novoNivel = resposta['nivel'] ?? (contador ~/ 5);
-      int novoFill = resposta['fill_index'] ?? (contador % 5);
-      if (novoNivel > nivel) {
-        _animController.forward(from: 0.0);
-      }
-      nivel = novoNivel;
-      fillIndex = novoFill;
-      if (contador % 10 == 0) carregarImagemFundo();
+      mensagens.add({"role": "assistant", "content": resposta['resposta']});
+      fundoIndex = ((mensagens.where((m) => m['role'] == 'assistant').length) ~/ 10) + 1;
+      carregando = false;
     });
   }
 
-  Widget _buildMessage(Map<String, String> msg) {
+  Future<void> regenerarResposta(String texto) async {
+    setState(() {
+      mensagens.removeLast();
+      carregando = true;
+    });
+
+    final nova = await apiService.sendMessage(
+      mensagem: texto,
+      personagem: widget.personagem,
+      regenerar: true,
+    );
+
+    setState(() {
+      mensagens.add({
+        "role": "assistant",
+        "content": "${nova['resposta']} (regenerada)"
+      });
+      carregando = false;
+    });
+  }
+
+  Widget _mensagemItem(int i) {
+    final msg = mensagens[i];
     final role = msg['role'];
-    final content = msg['content'] ?? '';
-    final isUser = role == 'user';
-    final isSystem = role == 'system';
+    final content = msg['content'];
 
-    final color = isSystem
-        ? Colors.white.withOpacity(0.5)
-        : isUser
-            ? Colors.blue.withOpacity(0.4)
-            : Colors.green.withOpacity(0.4);
+    final isUltimaIA = role == 'assistant' &&
+        i == mensagens.lastIndexWhere((m) => m['role'] == 'assistant');
+    final userMsg = i > 0 ? mensagens[i - 1]['content'] : '';
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black26,
-            offset: Offset(2, 2),
-            blurRadius: 6,
-          ),
-        ],
-      ),
-      child: Text(
-        content,
-        style: GoogleFonts.roboto(
-          fontSize: 16,
-          color: Colors.white,
+    final alignment = role == 'user'
+        ? Alignment.centerRight
+        : role == 'system'
+            ? Alignment.center
+            : Alignment.centerLeft;
+
+    final cor = role == 'user'
+        ? Colors.blue.shade100
+        : role == 'assistant'
+            ? Colors.grey.shade200
+            : Colors.orange.shade100;
+
+    return Align(
+      alignment: alignment,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: cor.withOpacity(0.85),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(content),
+            if (isUltimaIA)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => regenerarResposta(userMsg),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text("Regenerar"),
+                ),
+              )
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildCoracao() {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Row(
-          children: List.generate(5, (i) {
-            return Icon(
-              Icons.favorite,
-              size: 20,
-              color: i < fillIndex ? Colors.pink : Colors.white24,
-            );
-          }),
+  void abrirImagemAtual() {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        child: InteractiveViewer(
+          child: Image.network(imagemFundoUrl, fit: BoxFit.contain),
         ),
-        Positioned(
-          right: -20,
-          child: Text(
-            '$nivel',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-          ),
-        )
-      ],
+      ),
     );
   }
 
@@ -161,96 +146,86 @@ class _ChatScreenState extends State<ChatScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(widget.personagem),
-        backgroundColor: Colors.black.withOpacity(0.2),
-        elevation: 0,
+        backgroundColor: Colors.black87,
         actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: ScaleTransition(
-              scale: _scaleAnimation,
-              child: _buildCoracao(),
-            ),
+          IconButton(
+            icon: const Icon(Icons.image),
+            tooltip: 'Ver imagem atual',
+            onPressed: abrirImagemAtual,
           ),
           IconButton(
-            icon: const Icon(Icons.visibility),
-            tooltip: "Ver imagem de fundo",
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  fullscreenDialog: true,
-                  builder: (_) => Scaffold(
-                    backgroundColor: Colors.black,
-                    body: GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: Center(
-                        child: InteractiveViewer(
-                          child: Image.network(
-                            imagemFundoAtual,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, _, __) => const Text(
-                              'Erro ao carregar imagem',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+            icon: const Icon(Icons.info_outline),
+            tooltip: 'Ver introdução',
+            onPressed: () async {
+              final intro = await apiService.getIntro(widget.personagem);
+              showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text("Introdução"),
+                  content: Text(intro),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Fechar"),
+                    )
+                  ],
                 ),
               );
             },
-          )
+          ),
         ],
       ),
       body: Stack(
+        fit: StackFit.expand,
         children: [
-          Positioned.fill(
-            child: FadeInImage.assetNetwork(
-              placeholder: 'assets/placeholder.jpg',
-              image: imagemFundoAtual,
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 800),
+            child: Image.network(
+              imagemFundoUrl,
+              key: ValueKey(fundoIndex),
               fit: BoxFit.cover,
-              fadeInDuration: const Duration(milliseconds: 500),
-              imageErrorBuilder: (_, __, ___) =>
-                  Container(color: Colors.black12),
             ),
           ),
+          Container(color: Colors.black.withOpacity(0.3)),
           Column(
             children: [
               const SizedBox(height: kToolbarHeight + 16),
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 80),
                   itemCount: mensagens.length,
-                  itemBuilder: (_, i) => _buildMessage(mensagens[i]),
+                  itemBuilder: (_, i) => _mensagemItem(i),
                 ),
               ),
+              if (carregando)
+                const Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: CircularProgressIndicator(),
+                ),
               Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(8.0),
                 child: Row(
                   children: [
                     Expanded(
                       child: TextField(
-                        controller: _controller,
-                        style: const TextStyle(color: Colors.black),
+                        controller: controller,
+                        onSubmitted: (_) => enviarMensagem(),
                         decoration: const InputDecoration(
                           hintText: "Digite sua mensagem...",
                           filled: true,
                           fillColor: Colors.white70,
-                          border: OutlineInputBorder(),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    ElevatedButton(
-                      onPressed: () => enviarMensagem(_controller.text),
-                      child: const Icon(Icons.send),
-                    ),
+                    IconButton(
+                      icon: const Icon(Icons.send),
+                      onPressed: enviarMensagem,
+                      color: Colors.white,
+                    )
                   ],
                 ),
-              ),
+              )
             ],
           ),
         ],
