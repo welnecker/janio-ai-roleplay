@@ -1,5 +1,3 @@
-// chat_screen.dart atualizado com indicador de nível (coração animado)
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:janio_ai_roleplay/services/api_service.dart';
@@ -27,6 +25,7 @@ class _ChatScreenState extends State<ChatScreen>
   final List<Map<String, String>> mensagens = [];
   int contador = 0;
   int nivel = 0;
+  int fillIndex = 0;
   String imagemFundoAtual = "";
   late AnimationController _animController;
   late Animation<double> _scaleAnimation;
@@ -65,6 +64,7 @@ class _ChatScreenState extends State<ChatScreen>
       mensagens.addAll(msgs);
       contador = mensagens.where((m) => m['role'] == 'user').length;
       nivel = contador ~/ 5;
+      fillIndex = contador % 5;
       carregarImagemFundo();
     });
   }
@@ -87,10 +87,12 @@ class _ChatScreenState extends State<ChatScreen>
       mensagens.add({'role': 'assistant', 'content': resposta['resposta']});
       contador += 1;
       int novoNivel = resposta['nivel'] ?? (contador ~/ 5);
+      int novoFill = resposta['fill_index'] ?? (contador % 5);
       if (novoNivel > nivel) {
         _animController.forward(from: 0.0);
       }
       nivel = novoNivel;
+      fillIndex = novoFill;
       if (contador % 10 == 0) carregarImagemFundo();
     });
   }
@@ -131,6 +133,34 @@ class _ChatScreenState extends State<ChatScreen>
     );
   }
 
+  Widget _buildCoracao() {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Row(
+          children: List.generate(5, (i) {
+            return Icon(
+              Icons.favorite,
+              size: 20,
+              color: i < fillIndex ? Colors.pink : Colors.white24,
+            );
+          }),
+        ),
+        Positioned(
+          right: -20,
+          child: Text(
+            '$nivel',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        )
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -145,24 +175,7 @@ class _ChatScreenState extends State<ChatScreen>
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: ScaleTransition(
               scale: _scaleAnimation,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  const Icon(Icons.favorite, color: Colors.pinkAccent, size: 28),
-                  Positioned(
-                    top: 2,
-                    right: 0,
-                    child: Text(
-                      nivel.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              child: _buildCoracao(),
             ),
           ),
           IconButton(
@@ -198,7 +211,6 @@ class _ChatScreenState extends State<ChatScreen>
       ),
       body: Stack(
         children: [
-          // Fundo sem blur
           Positioned.fill(
             child: FadeInImage.assetNetwork(
               placeholder: 'assets/placeholder.jpg',
@@ -209,8 +221,6 @@ class _ChatScreenState extends State<ChatScreen>
                   Container(color: Colors.black12),
             ),
           ),
-
-          // Mensagens e input
           Column(
             children: [
               const SizedBox(height: kToolbarHeight + 16),
