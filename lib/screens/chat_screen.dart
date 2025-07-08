@@ -58,7 +58,7 @@ class _ChatScreenState extends State<ChatScreen> {
       mensagens.add({"role": "assistant", "content": resposta['resposta']});
       fundoIndex = ((mensagens.where((m) => m['role'] == 'assistant').length) ~/ 10) + 1;
       nivel = resposta['nivel'] ?? 0;
-      fillIndex = resposta['fill_index'] ?? 0;
+      fillIndex = resposta['fill_index'] ?? (nivel % 5);
       carregando = false;
     });
   }
