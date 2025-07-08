@@ -147,7 +147,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildNivelCorações() {
+  Widget _buildNivelCoracoes() {
     return Row(
       children: [
         Text("$nivel.", style: const TextStyle(fontSize: 16)),
@@ -171,7 +171,7 @@ class _ChatScreenState extends State<ChatScreen> {
         title: Row(
           children: [
             Expanded(child: Text(widget.personagem)),
-            _buildNivelCorações(),
+            _buildNivelCoracoes(),
           ],
         ),
         backgroundColor: Colors.black87,
