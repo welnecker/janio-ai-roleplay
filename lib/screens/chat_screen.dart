@@ -15,6 +15,9 @@ class _ChatScreenState extends State<ChatScreen> {
   List<Map<String, dynamic>> mensagens = [];
   bool carregando = false;
   int fundoIndex = 1;
+  int nivel = 0;
+  int fillIndex = 0;
+
   String get imagemFundoUrl =>
       "https://raw.githubusercontent.com/welnecker/roleplay_imagens/main/${widget.personagem}_fundo$fundoIndex.jpeg";
 
@@ -54,6 +57,8 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() {
       mensagens.add({"role": "assistant", "content": resposta['resposta']});
       fundoIndex = ((mensagens.where((m) => m['role'] == 'assistant').length) ~/ 10) + 1;
+      nivel = resposta['nivel'] ?? 0;
+      fillIndex = resposta['fill_index'] ?? 0;
       carregando = false;
     });
   }
@@ -142,12 +147,33 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  Widget _buildNivelCorações() {
+    return Row(
+      children: [
+        Text("$nivel.", style: const TextStyle(fontSize: 16)),
+        const SizedBox(width: 4),
+        ...List.generate(5, (index) => Icon(
+              index < fillIndex
+                  ? Icons.favorite
+                  : Icons.favorite_border,
+              color: Colors.pink,
+              size: 18,
+            )),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(widget.personagem),
+        title: Row(
+          children: [
+            Expanded(child: Text(widget.personagem)),
+            _buildNivelCorações(),
+          ],
+        ),
         backgroundColor: Colors.black87,
         actions: [
           IconButton(
