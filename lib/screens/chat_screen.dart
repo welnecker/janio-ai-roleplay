@@ -1,17 +1,15 @@
+// chat_screen.dart atualizado: sem modo/estado, integração com backend atualizado e UI com coração animado por nível
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:janio_ai_roleplay/services/api_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final String personagem;
-  final String modo;
-  final String estado;
 
   const ChatScreen({
     Key? key,
     required this.personagem,
-    required this.modo,
-    required this.estado,
   }) : super(key: key);
 
   @override
@@ -78,9 +76,7 @@ class _ChatScreenState extends State<ChatScreen>
 
     final resposta = await apiService.sendMessage(
       mensagem: texto,
-      modo: widget.modo,
       personagem: widget.personagem,
-      estado: widget.estado,
     );
 
     setState(() {
