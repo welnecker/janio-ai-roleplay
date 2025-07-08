@@ -11,13 +11,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ApiService apiService = ApiService();
-  String modoSelecionado = 'Normal';
-  String estadoSelecionado = 'Neutro';
   String personagemSelecionado = '';
   List<Map<String, dynamic>> personagens = [];
-
-  final List<String> modos = ['Normal', 'Romântico', 'Atrevido', 'Misterioso'];
-  final List<String> estados = ['Neutro', 'Feliz', 'Triste', 'Raivoso', 'Excitado'];
 
   @override
   void initState() {
@@ -38,8 +33,6 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (_) => ChatScreen(
           personagem: personagem,
-          modo: modoSelecionado,
-          estado: estadoSelecionado,
         ),
       ),
     );
@@ -49,67 +42,23 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Escolha o personagem")),
-      body: Column(
-        children: [
-          // Menus suspensos
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                // Modo
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: modoSelecionado,
-                    items: modos.map((m) {
-                      return DropdownMenuItem(value: m, child: Text(m));
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) setState(() => modoSelecionado = value);
-                    },
-                    decoration: const InputDecoration(labelText: "Modo"),
+      body: personagens.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : ListView.builder(
+              itemCount: personagens.length,
+              itemBuilder: (_, i) {
+                final p = personagens[i];
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundImage: NetworkImage(p['foto']),
+                    backgroundColor: Colors.grey.shade300,
                   ),
-                ),
-                const SizedBox(width: 8),
-                // Estado
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: estadoSelecionado,
-                    items: estados.map((e) {
-                      return DropdownMenuItem(value: e, child: Text(e));
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) setState(() => estadoSelecionado = value);
-                    },
-                    decoration: const InputDecoration(labelText: "Estado"),
-                  ),
-                ),
-              ],
+                  title: Text(p['nome']),
+                  subtitle: Text(p['descricao'] ?? ''),
+                  onTap: () => abrirChat(p['nome']),
+                );
+              },
             ),
-          ),
-          const SizedBox(height: 10),
-
-          // Lista de personagens
-          Expanded(
-            child: personagens.isEmpty
-                ? const Center(child: CircularProgressIndicator())
-                : ListView.builder(
-                    itemCount: personagens.length,
-                    itemBuilder: (_, i) {
-                      final p = personagens[i];
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundImage: NetworkImage(p['foto']),
-                          backgroundColor: Colors.grey.shade300,
-                        ),
-                        title: Text(p['nome']),
-                        subtitle: Text(p['descricao'] ?? ''),
-                        onTap: () => abrirChat(p['nome']),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
     );
   }
 }
