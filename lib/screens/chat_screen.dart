@@ -57,8 +57,8 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() {
       mensagens.add({"role": "assistant", "content": resposta['resposta']});
       fundoIndex = ((mensagens.where((m) => m['role'] == 'assistant').length) ~/ 10) + 1;
-      nivel = resposta['nivel'] ?? 0;
-      fillIndex = resposta['fill_index'] ?? (nivel % 5);
+      nivel = int.tryParse(resposta['nivel'].toString()) ?? 0;
+      fillIndex = int.tryParse(resposta['fill_index'].toString()) ?? (nivel % 5);
       carregando = false;
     });
   }
@@ -148,18 +148,23 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildNivelCoracoes() {
-    return Row(
-      children: [
-        Text("$nivel.", style: const TextStyle(fontSize: 16)),
-        const SizedBox(width: 4),
-        ...List.generate(5, (index) => Icon(
-              index < fillIndex
-                  ? Icons.favorite
-                  : Icons.favorite_border,
-              color: Colors.pink,
-              size: 18,
-            )),
-      ],
+    return Tooltip(
+      message: "Nível de afinidade com ${widget.personagem}",
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            "Nível $nivel",
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white),
+          ),
+          const SizedBox(width: 6),
+          ...List.generate(5, (index) => Icon(
+                index < fillIndex ? Icons.favorite : Icons.favorite_border,
+                color: index < fillIndex ? Colors.pinkAccent : Colors.grey.shade400,
+                size: 18,
+              )),
+        ],
+      ),
     );
   }
 
@@ -168,9 +173,11 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Row(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: Text(widget.personagem)),
+            Text(widget.personagem, style: const TextStyle(fontSize: 18)),
+            const SizedBox(height: 2),
             _buildNivelCoracoes(),
           ],
         ),
