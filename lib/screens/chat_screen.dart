@@ -3,7 +3,12 @@ import 'package:janio_ai_roleplay/services/api_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final String personagem;
-  const ChatScreen({super.key, required this.personagem});
+  final String plataforma; // NOVO
+  const ChatScreen({
+    super.key,
+    required this.personagem,
+    this.plataforma = "openai", // Valor padrão
+  });
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -17,7 +22,7 @@ class _ChatScreenState extends State<ChatScreen> {
   int fundoIndex = 1;
   int nivel = 0;
   int fillIndex = 0;
-  String plataformaSelecionada = "openai"; // Default
+  late String plataformaSelecionada;
 
   String get imagemFundoUrl =>
       "https://raw.githubusercontent.com/welnecker/roleplay_imagens/main/${widget.personagem}_fundo$fundoIndex.jpeg";
@@ -25,6 +30,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    plataformaSelecionada = widget.plataforma; // recebe da tela anterior
     carregarMensagens();
   }
 
@@ -53,7 +59,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final resposta = await apiService.sendMessage(
       mensagem: texto,
       personagem: widget.personagem,
-      plataforma: plataformaSelecionada, // ← Envia plataforma
+      plataforma: plataformaSelecionada,
     );
 
     setState(() {
