@@ -10,7 +10,8 @@ class ApiService {
     bool regenerar = false,
     String modo = "Normal",
     String estado = "Neutro",
-    String plataforma = "openai", // Pode ser: "openai", "openrouter", "local"
+    String plataforma = "openai",
+    bool traduzir = true, // ← ADICIONADO
   }) async {
     final url = Uri.parse("$baseUrl/chat/");
     try {
@@ -24,6 +25,7 @@ class ApiService {
           "modo": modo,
           "estado": estado,
           "plataforma": plataforma,
+          "traduzir": traduzir, // ← ADICIONADO
         }),
       );
 
