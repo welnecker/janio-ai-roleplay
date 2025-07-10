@@ -23,6 +23,7 @@ class _ChatScreenState extends State<ChatScreen> {
   int nivel = 0;
   int fillIndex = 0;
   late String plataformaSelecionada;
+  bool traduzirAtivo = true; // NOVO
 
   String get imagemFundoUrl =>
       "https://raw.githubusercontent.com/welnecker/roleplay_imagens/main/${widget.personagem}_fundo$fundoIndex.jpeg";
@@ -60,6 +61,7 @@ class _ChatScreenState extends State<ChatScreen> {
       mensagem: texto,
       personagem: widget.personagem,
       plataforma: plataformaSelecionada,
+      traduzir: traduzirAtivo,
     );
 
     setState(() {
@@ -82,6 +84,7 @@ class _ChatScreenState extends State<ChatScreen> {
       personagem: widget.personagem,
       regenerar: true,
       plataforma: plataformaSelecionada,
+      traduzir: traduzirAtivo,
     );
 
     setState(() {
@@ -91,6 +94,28 @@ class _ChatScreenState extends State<ChatScreen> {
       });
       carregando = false;
     });
+  }
+
+  Future<void> limparMemorias() async {
+    final confirm = await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Confirmação"),
+        content: Text("Deseja realmente apagar as memórias e histórico de ${widget.personagem}?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancelar")),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Apagar")),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final resultado = await apiService.resetMemorias(widget.personagem);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(resultado)));
+        carregarMensagens();
+      }
+    }
   }
 
   Widget _mensagemItem(int i) {
@@ -213,6 +238,23 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         backgroundColor: Colors.black87,
         actions: [
+          IconButton(
+            icon: Icon(traduzirAtivo ? Icons.translate : Icons.g_translate),
+            tooltip: traduzirAtivo ? 'Tradução ativada' : 'Tradução desativada',
+            onPressed: () {
+              setState(() {
+                traduzirAtivo = !traduzirAtivo;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(traduzirAtivo ? "Tradução ativada" : "Tradução desativada")),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_forever),
+            tooltip: 'Apagar memórias e histórico',
+            onPressed: limparMemorias,
+          ),
           _buildPlataformaSelector(),
           IconButton(
             icon: const Icon(Icons.image),
