@@ -13,6 +13,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final ApiService apiService = ApiService();
   String personagemSelecionado = '';
   List<Map<String, dynamic>> personagens = [];
+  String plataformaSelecionada = 'openai'; // Default
 
   @override
   void initState() {
@@ -33,15 +34,45 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (_) => ChatScreen(
           personagem: personagem,
+          plataforma: plataformaSelecionada, // ← Envia plataforma selecionada
         ),
       ),
+    );
+  }
+
+  Widget _buildDropdownPlataforma() {
+    return DropdownButton<String>(
+      value: plataformaSelecionada,
+      dropdownColor: Colors.black87,
+      icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+      underline: const SizedBox(),
+      items: [
+        DropdownMenuItem(value: 'openai', child: Text('OpenAI', style: TextStyle(color: Colors.white))),
+        DropdownMenuItem(value: 'openrouter', child: Text('OpenRouter', style: TextStyle(color: Colors.white))),
+        DropdownMenuItem(value: 'local', child: Text('Local', style: TextStyle(color: Colors.white))),
+      ],
+      onChanged: (value) {
+        if (value != null) {
+          setState(() {
+            plataformaSelecionada = value;
+          });
+        }
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Escolha o personagem")),
+      appBar: AppBar(
+        title: const Text("Escolha o personagem"),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: _buildDropdownPlataforma(),
+          ),
+        ],
+      ),
       body: personagens.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : ListView.builder(
