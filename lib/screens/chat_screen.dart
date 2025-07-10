@@ -17,6 +17,7 @@ class _ChatScreenState extends State<ChatScreen> {
   int fundoIndex = 1;
   int nivel = 0;
   int fillIndex = 0;
+  String plataformaSelecionada = "openai"; // Default
 
   String get imagemFundoUrl =>
       "https://raw.githubusercontent.com/welnecker/roleplay_imagens/main/${widget.personagem}_fundo$fundoIndex.jpeg";
@@ -52,6 +53,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final resposta = await apiService.sendMessage(
       mensagem: texto,
       personagem: widget.personagem,
+      plataforma: plataformaSelecionada, // ← Envia plataforma
     );
 
     setState(() {
@@ -73,6 +75,7 @@ class _ChatScreenState extends State<ChatScreen> {
       mensagem: texto,
       personagem: widget.personagem,
       regenerar: true,
+      plataforma: plataformaSelecionada,
     );
 
     setState(() {
@@ -168,6 +171,27 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  Widget _buildPlataformaSelector() {
+    return DropdownButton<String>(
+      value: plataformaSelecionada,
+      dropdownColor: Colors.black87,
+      underline: const SizedBox(),
+      icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+      items: [
+        DropdownMenuItem(value: "openai", child: Text("OpenAI", style: TextStyle(color: Colors.white))),
+        DropdownMenuItem(value: "openrouter", child: Text("OpenRouter", style: TextStyle(color: Colors.white))),
+        DropdownMenuItem(value: "local", child: Text("Local", style: TextStyle(color: Colors.white))),
+      ],
+      onChanged: (value) {
+        if (value != null) {
+          setState(() {
+            plataformaSelecionada = value;
+          });
+        }
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -183,6 +207,7 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         backgroundColor: Colors.black87,
         actions: [
+          _buildPlataformaSelector(),
           IconButton(
             icon: const Icon(Icons.image),
             tooltip: 'Ver imagem atual',
