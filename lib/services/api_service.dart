@@ -5,38 +5,44 @@ class ApiService {
   final String baseUrl = "https://web-production-76f08.up.railway.app";
 
   Future<Map<String, dynamic>> sendMessage({
-  required String mensagem,
-  required String personagem,
-  bool regenerar = false,
-}) async {
-  final url = Uri.parse("$baseUrl/chat/");
-  try {
-    final response = await http.post(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "user_input": mensagem,
-        "personagem": personagem,
-        "regenerar": regenerar,
-      }),
-    );
+    required String mensagem,
+    required String personagem,
+    bool regenerar = false,
+    String modo = "Normal",
+    String estado = "Neutro",
+    String plataforma = "openai", // Pode ser: "openai", "openrouter", "local"
+  }) async {
+    final url = Uri.parse("$baseUrl/chat/");
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "user_input": mensagem,
+          "personagem": personagem,
+          "regenerar": regenerar,
+          "modo": modo,
+          "estado": estado,
+          "plataforma": plataforma,
+        }),
+      );
 
-    if (response.statusCode == 200) {
-      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-      return {
-        "resposta": decoded["resposta"] ?? "",
-        "nivel": decoded["nivel"] ?? 0,
-        "fill_index": decoded["fill_index"] ?? 0, // ← ADICIONADO AQUI
-      };
-    } else {
-      print("Erro no envio da mensagem: ${response.statusCode}");
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        return {
+          "resposta": decoded["resposta"] ?? "",
+          "nivel": decoded["nivel"] ?? 0,
+          "fill_index": decoded["fill_index"] ?? 0,
+        };
+      } else {
+        print("Erro no envio da mensagem: ${response.statusCode}");
+        return {};
+      }
+    } catch (e) {
+      print("Erro ao enviar mensagem: $e");
       return {};
     }
-  } catch (e) {
-    print("Erro ao enviar mensagem: $e");
-    return {};
   }
-}
 
   Future<String> getIntro(String personagem) async {
     final url = Uri.parse('$baseUrl/intro/?personagem=$personagem');
